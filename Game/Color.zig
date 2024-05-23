@@ -1,1 +1,1 @@
-const Color = enum { WHITE, BLACK };
+pub const Color = enum { WHITE, BLACK };

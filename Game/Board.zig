@@ -45,6 +45,6 @@ pub var Board = struct {
     }
 };
 
-fn newBoard() Board {
+pub fn newBoard() Board {
     return Board{ .wPieces = Maps.Rank_1 | Maps.Rank_2, .wPawns = Maps.Rank_2, .wKnights = 42, .wBishops = 36, .wRooks = 129, .wQueens = 16, .wKing = 8, .bPieces = Maps.Rank_8 | Maps.Rank_7, .bPawns = Maps.Rank_7, .bKnights = .wKnights << 56, .bBishops = .wBishops << 56, .bRooks = .wRooks << 56, .bQueens = .wQueens << 56, .bKing = .wKing << 56 };
 }
