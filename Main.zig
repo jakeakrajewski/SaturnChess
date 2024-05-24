@@ -4,5 +4,5 @@ const bit = @import("BitManipulation/BitManipulation.zig");
 const sqr = @import("Board/Square.zig");
 
 pub fn main() !void {
-    try bit.Print(map.MaskKingAttacks(.E4));
+    try bit.Print(map.MaskBishopAttacks(.E4));
 }
