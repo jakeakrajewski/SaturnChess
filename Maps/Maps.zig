@@ -31,7 +31,7 @@ pub fn MaskPawnAttacks(square: Square, side: u1) u64 {
 
     var attacks: u64 = 0;
 
-    bitboard = bit.SetBit(bitboard, square);
+    bit.SetBit(&bitboard, square);
 
     if (side == 0) {
         if (((bitboard >> 7) & ~FILE_A) != 0) {
@@ -56,7 +56,7 @@ pub fn MaskKnightAttacks(square: Square) u64 {
     var bitboard: u64 = 0;
     var attacks: u64 = 0;
 
-    bitboard = bit.SetBit(bitboard, square);
+    bit.SetBit(&bitboard, square);
     if (((bitboard >> 17) & ~FILE_H) != 0) {
         attacks |= (bitboard >> 17);
     }
@@ -89,7 +89,7 @@ pub fn MaskKingAttacks(square: Square) u64 {
     var bitboard: u64 = 0;
     var attacks: u64 = 0;
 
-    bitboard = bit.SetBit(bitboard, square);
+    bit.SetBit(&bitboard, square);
     if ((bitboard >> 8) != 0) {
         attacks |= (bitboard >> 8);
     }
@@ -131,7 +131,6 @@ pub fn MaskBishopAttacks(square: Square) u64 {
     }) {
         attacks |= @as(u64, 1) << @intCast(r * 8 + f);
     }
-
     r = rank;
     f = file;
     while (r < 7 and f > 0) : ({
@@ -140,7 +139,6 @@ pub fn MaskBishopAttacks(square: Square) u64 {
     }) {
         attacks |= @as(u64, 1) << @intCast(r * 8 + f);
     }
-
     r = rank;
     f = file;
     while (r > 0 and f < 7) : ({
@@ -149,7 +147,6 @@ pub fn MaskBishopAttacks(square: Square) u64 {
     }) {
         attacks |= @as(u64, 1) << @intCast(r * 8 + f);
     }
-
     r = rank;
     f = file;
     while (r > 0 and f > 0) : ({
@@ -163,19 +160,71 @@ pub fn MaskBishopAttacks(square: Square) u64 {
     return attacks;
 }
 
+pub fn GenerateBishopAttacks(square: Square, blockers: u64) u64 {
+    var attacks: u64 = 0;
+    const index = square.toIndex();
+    const rank = index / 8;
+    const file = index % 8;
+    var target: u64 = undefined;
+
+    var r: i64 = rank;
+    var f: i64 = file;
+    while (r <= 7 and f <= 7) : ({
+        r += 1;
+        f += 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    r = rank;
+    f = file;
+    while (r <= 7 and f >= 0) : ({
+        r += 1;
+        f -= 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    r = rank;
+    f = file;
+    while (r >= 0 and f <= 7) : ({
+        r -= 1;
+        f += 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    r = rank;
+    f = file;
+    while (r >= 0 and f >= 0) : ({
+        r -= 1;
+        f -= 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+
+    attacks ^= (@as(u64, 1) << index);
+    return attacks;
+}
+
 pub fn MaskRookAttacks(square: Square) u64 {
     var attacks: u64 = 0;
     const index = square.toIndex();
     const rank: u8 = index / 8;
     const file: u8 = index % 8;
 
-    for (0..8) |r| {
+    for (1..7) |r| {
         if (r != rank) {
             attacks |= @as(u64, 1) << @intCast(r * 8 + file);
         }
     }
 
-    for (0..8) |f| {
+    for (1..7) |f| {
         if (f != file) {
             attacks |= @as(u64, 1) << @intCast(rank * 8 + f);
         }
@@ -184,11 +233,57 @@ pub fn MaskRookAttacks(square: Square) u64 {
     return attacks;
 }
 
-pub fn GenerateLeaperAttacks() void {
+pub fn GenerateRookAttacks(square: Square, blockers: u64) u64 {
+    var attacks: u64 = 0;
+    const index = square.toIndex();
+    const rank = index / 8;
+    const file = index % 8;
+    var target: u64 = undefined;
+
+    var r: i64 = rank;
+    var f: i64 = file;
+    while (r <= 7) : ({
+        r += 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + file);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    r = rank;
+    while (r >= 0) : ({
+        r -= 1;
+    }) {
+        target = @as(u64, 1) << @intCast(r * 8 + file);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    r = rank;
+    while (f <= 7) : ({
+        f += 1;
+    }) {
+        target = @as(u64, 1) << @intCast(rank * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+    f = file;
+    while (f >= 0) : ({
+        f -= 1;
+    }) {
+        target = @as(u64, 1) << @intCast(rank * 8 + f);
+        attacks |= target;
+        if ((target & blockers) != 0) break;
+    }
+
+    attacks ^= (@as(u64, 1) << index);
+    return attacks;
+}
+
+pub fn GenerateLeaperAttacks() !void {
     for (0..64) |s| {
-        pawnAttacks[0][s] = MaskPawnAttacks(0, s);
-        pawnAttacks[1][s] = MaskPawnAttacks(1, s);
-        knightAttacks[s] = MaskKnightAttacks(s);
-        kingAttacks[s] = MaskKingAttacks(s);
+        const square = try sqr.Square.fromIndex(@intCast(s));
+        pawnAttacks[0][s] = MaskPawnAttacks(square, 0);
+        pawnAttacks[1][s] = MaskPawnAttacks(square, 1);
+        knightAttacks[s] = MaskKnightAttacks(square);
+        kingAttacks[s] = MaskKingAttacks(square);
     }
 }
