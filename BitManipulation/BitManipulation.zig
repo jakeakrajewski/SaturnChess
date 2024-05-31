@@ -18,7 +18,7 @@ pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
     }
 }
 
-pub fn BitCount(bitboard: u64) u6 {
+pub fn BitCount(bitboard: u128) u6 {
     var count: u6 = 0;
     var board = bitboard;
 

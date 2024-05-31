@@ -26,6 +26,10 @@ pub var pawnAttacks: [2][64]u64 = undefined;
 pub var knightAttacks: [64]u64 = undefined;
 pub var kingAttacks: [64]u64 = undefined;
 
+pub const bishopRelevantBits: [64]u32 = .{ 6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6 };
+
+pub const rookRelevantBits: [64]u32 = .{ 12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11, 12 };
+
 pub fn MaskPawnAttacks(square: Square, side: u1) u64 {
     var bitboard: u64 = 0;
 
