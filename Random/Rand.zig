@@ -54,9 +54,8 @@ pub fn FindMagicNumber(square: u32, relevantBits: u32, bishop: u64) !u64 {
     var randCount: u64 = 0;
     while (randCount < 1000000000) {
         const magicNumber = GenerateMagicNumber();
-        const product = @mulWithOverflow(magicNumber, attackMask);
-
-        if (bitManip.BitCount(product[0] & 0xFF00000000000000) < 6) continue;
+        const product: u128 = @as(u128, attackMask) * magicNumber;
+        if (bitManip.BitCount(product & 0xFF00000000000000) < 6) continue;
 
         @memset(&usedAttacks, 0);
 
@@ -64,8 +63,8 @@ pub fn FindMagicNumber(square: u32, relevantBits: u32, bishop: u64) !u64 {
         var fail: i32 = 0;
 
         while (fail != 1 and index < occupancyIndecies) {
-            const p = @mulWithOverflow(occupancies[@intCast(index)], magicNumber);
-            const magicIndex: usize = @as(usize, @intCast(p[0])) >> @intCast(64 - relevantBits);
+            const p = @as(u128, occupancies[@intCast(index)]) * magicNumber;
+            const magicIndex: u32 = @intCast(p >> @intCast(64 - relevantBits));
 
             if (usedAttacks[magicIndex] == @as(u64, 0)) {
                 usedAttacks[magicIndex] = attacks[@intCast(index)];
