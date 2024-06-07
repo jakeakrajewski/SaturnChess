@@ -63,12 +63,13 @@ pub const Square = enum {
     F1,
     G1,
     H1,
+    XX,
 
     pub fn toIndex(self: Square) u6 {
         return @intCast(@intFromEnum(self));
     }
 
-    pub const Squares: [64]Square = .{
+    pub const Squares: [65]Square = .{
         .A8, .B8, .C8, .D8, .E8, .F8, .G8, .H8,
         .A7, .B7, .C7, .D7, .E7, .F7, .G7, .H7,
         .A6, .B6, .C6, .D6, .E6, .F6, .G6, .H6,
@@ -77,9 +78,10 @@ pub const Square = enum {
         .A3, .B3, .C3, .D3, .E3, .F3, .G3, .H3,
         .A2, .B2, .C2, .D2, .E2, .F2, .G2, .H2,
         .A1, .B1, .C1, .D1, .E1, .F1, .G1, .H1,
+        .XX,
     };
 
-    pub fn fromIndex(index: u8) !Square {
+    pub fn fromIndex(index: u6) !Square {
         if (index >= 64) return error.InvalidIndex;
         return Squares[index];
     }
@@ -150,6 +152,7 @@ pub const Square = enum {
             .F1 => "F1",
             .G1 => "G1",
             .H1 => "H1",
+            .XX => "XX",
         };
     }
 };

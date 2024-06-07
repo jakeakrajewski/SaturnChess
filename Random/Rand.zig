@@ -5,6 +5,52 @@ const bitManip = @import("../BitManipulation/BitManipulation.zig");
 
 const stdout = std.io.getStdOut().writer();
 
+pub fn FindMagicNumber(square: u6, relevant_bits: u7, is_bishop: bool) u64 {
+    const max_attempts: usize = 1000000;
+    const occupancy_indices: usize = @as(usize, 1) << @intCast(relevant_bits);
+
+    var occupancies: [4096]u64 = undefined;
+    var attacks: [4096]u64 = undefined;
+    var used_attacks: [4096]u64 = undefined;
+
+    const mask = if (is_bishop) map.MaskBishopAttacks(square) else map.MaskRookAttacks(square);
+
+    for (0..occupancy_indices) |index| {
+        occupancies[index] = bitManip.setOccupancy(index, mask);
+        attacks[index] = if (is_bishop) map.GenerateBishopAttacks(square, occupancies[index]) else map.GenerateRookAttacks(square, occupancies[index]);
+    }
+    var attempt: usize = 0;
+
+    while (attempt < max_attempts) {
+        const magic = GenerateMagicNumber();
+
+        // Ignore unsuitable magic numbers
+        if (bitManip.BitCount((@as(u128, mask) * magic) & 0xFF00000000000000) < 6) {
+            continue;
+        }
+
+        @memset(&used_attacks, 0);
+
+        var fail = false;
+        for (0..occupancy_indices) |index| {
+            const magic_index = ((@as(u128, occupancies[index]) * magic) & 0xffffffffffffffff) >> @intCast(64 - relevant_bits);
+            if (used_attacks[@intCast(magic_index)] == 0) {
+                used_attacks[@intCast(magic_index)] = attacks[index];
+            } else if (used_attacks[@intCast(magic_index)] != attacks[index]) {
+                fail = true;
+                break;
+            }
+        }
+
+        if (!fail) {
+            return magic;
+        }
+        attempt += 1;
+    }
+
+    @panic("Failed to find magic number");
+}
+
 var state: u32 = 1804289383;
 
 pub fn RandU32() u32 {
@@ -36,56 +82,8 @@ pub fn GenerateMagicNumber() u64 {
     return RandU64() & RandU64() & RandU64();
 }
 
-pub fn FindMagicNumber(square: u32, relevantBits: u32, bishop: u64) !u64 {
-    var occupancies: [4096]u64 = undefined;
-    var attacks: [4096]u64 = undefined;
-    var usedAttacks: [4096]u64 = undefined;
-    const s = try sqr.Square.fromIndex(@intCast(square));
-    var attackMask = if (bishop == 1) map.MaskBishopAttacks(s) else map.MaskRookAttacks(s);
-
-    const occupancyIndecies = @as(u64, 1) << @intCast(relevantBits);
-
-    for (0..occupancyIndecies) |index| {
-        occupancies[index] = bitManip.SetOccupancy(index, &attackMask);
-
-        attacks[index] = if (bishop == 1) map.GenerateBishopAttacks(s, occupancies[index]) else map.GenerateRookAttacks(s, occupancies[index]);
-    }
-
-    var randCount: u64 = 0;
-    while (randCount < 1000000000) {
-        const magicNumber = GenerateMagicNumber();
-        const product: u128 = @as(u128, attackMask) * magicNumber;
-        if (bitManip.BitCount(product & 0xFF00000000000000) < 6) continue;
-
-        @memset(&usedAttacks, 0);
-
-        var index: i32 = 0;
-        var fail: i32 = 0;
-
-        while (fail != 1 and index < occupancyIndecies) {
-            const p = @as(u128, occupancies[@intCast(index)]) * magicNumber;
-            const magicIndex: u32 = @intCast(p >> @intCast(64 - relevantBits));
-
-            if (usedAttacks[magicIndex] == @as(u64, 0)) {
-                usedAttacks[magicIndex] = attacks[@intCast(index)];
-            } else if (usedAttacks[magicIndex] != attacks[@intCast(index)]) {
-                fail = 1;
-            }
-
-            index += 1;
-        }
-
-        if (fail != 0) {
-            return magicNumber;
-        }
-
-        randCount += 1;
-    }
-    unreachable;
-}
-
 pub fn InitMagicNumbers() !void {
     for (0..64) |square| {
-        try stdout.print("{x}\n", .{try FindMagicNumber(@intCast(square), map.rookRelevantBits[square], 0)});
+        try stdout.print("{x}\n", .{FindMagicNumber(@intCast(square), map.bishopRelevantBits[square], true)});
     }
 }

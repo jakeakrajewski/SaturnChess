@@ -35,20 +35,20 @@ pub fn LeastSignificantBit(bitboard: *u64) i6 {
     return @intCast(@ctz(bitboard.*));
 }
 
-pub fn SetOccupancy(index: usize, attackMask: *u64) u64 {
-    var occupancy: u64 = 0;
-    var count: usize = 0;
+pub fn setOccupancy(index: usize, attackMask: u64) u64 {
+    var blockers: u64 = 0;
+    var bitsSet: u32 = 0;
 
-    for (0..64) |bitIndex| {
-        if (GetBit(attackMask.*, @intCast(bitIndex)) != 0) {
-            if (index & (@as(usize, 1) << @intCast(count)) != 0) {
-                occupancy |= (@as(u64, 1) << @intCast(bitIndex));
+    for (0..64) |i| {
+        if ((attackMask & (@as(u64, 1) << @intCast(i))) != 0) {
+            if ((index & (@as(u32, 1) << @intCast(bitsSet))) != 0) {
+                blockers |= (@as(u64, 1) << @intCast(i));
             }
-            count += 1;
+            bitsSet += 1;
         }
     }
 
-    return occupancy;
+    return blockers;
 }
 
 pub fn Print(bitBoard: u64) !void {
