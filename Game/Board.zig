@@ -1,6 +1,8 @@
 const Maps = @import("../Maps/Maps.zig");
 const color = @import("./Color.zig");
 const std = @import("std");
+const sqr = @import("../Board/Square.zig");
+const bit = @import("../BitManipulation/BitManipulation.zig");
 
 pub const Color = enum { WHITE, BLACK };
 pub const Castle = enum(u4) { WK = 1, WQ = 2, BK = 4, BQ = 8 };
@@ -52,7 +54,29 @@ pub const Board = struct {
     castle: u4,
 
     const emptySquares: u64 = ~(.wPieces | .bPieces);
-    const allPieces: u64 = .wPieces | .bPieces;
+
+    pub fn isSquareAttacked(self: *Board, square: u6, side: u1) bool {
+        if (side == 0) {
+            if ((Maps.pawnAttacks[1][square] & self.wPawns) > 0) return true;
+        } else {
+            if ((Maps.pawnAttacks[0][square] & self.bPawns) > 0) return true;
+        }
+
+        const knights = if (side == 0) self.bKnights else self.wKnights;
+        const bishops = if (side == 0) self.bBishops else self.wBishops;
+        const rooks = if (side == 0) self.bRooks else self.wRooks;
+        const queens = if (side == 0) self.bQueens else self.wQueens;
+        const king = if (side == 0) self.bKing else self.wKing;
+
+        const allPieces = self.wPieces | self.bPieces;
+
+        if ((Maps.GenerateBishopAttacks(square, allPieces) & bishops) > 0) return true;
+        if ((Maps.GenerateRookAttacks(square, allPieces) & rooks) > 0) return true;
+        if ((Maps.GenerateQueenAttacks(square, allPieces) & queens) > 0) return true;
+        if ((Maps.knightAttacks[square] & knights) > 0) return true;
+        if ((Maps.kingAttacks[square] & king) > 0) return true;
+        return false;
+    }
 };
 
 pub fn emptyBoard() Board {
