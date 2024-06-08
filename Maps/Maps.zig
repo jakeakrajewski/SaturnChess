@@ -432,10 +432,25 @@ pub fn GenerateRookAttacks(square: u6, blockers: u64) u64 {
     attacks ^= (@as(u64, 1) << square);
     return attacks;
 }
+pub fn GetBishopAttacks(square: u6, occupancy: u64) u64 {
+    var occ = occupancy;
+    occ &= bishopMask[square];
+    occ *= bishop_magic_numbers[square];
+    occ >>= @intCast(64 - bishopRelevantBits[square]);
+    return bishopAttacks[square][occ];
+}
+
+pub fn GetRookAttacks(square: u6, occupancy: u64) u64 {
+    var occ = occupancy;
+    occ &= rookMask[square];
+    occ *= rook_magic_numbers[square];
+    occ >>= @intCast(64 - rookRelevantBits[square]);
+    return rookAttacks[square][occ];
+}
 
 pub fn GenerateQueenAttacks(square: u6, blockers: u64) u64 {
-    const rook = GenerateRookAttacks(square, blockers);
-    const bishop = GenerateBishopAttacks(square, blockers);
+    const rook = GetRookAttacks(square, blockers);
+    const bishop = GetBishopAttacks(square, blockers);
     return rook | bishop;
 }
 
@@ -479,17 +494,8 @@ pub fn initRookAttacks() void {
     }
 }
 
-// pub fn initQueenAttacks() void {
-//     for (0..64) |square| {
-//         for (0..4096) |index| {
-//             queenAttacks[square][index] = rookAttacks[square][index] | bishopAttacks[square][index];
-//         }
-//     }
-// }
-
 pub fn InitializeAttackTables() !void {
     try GenerateLeaperAttacks();
     initRookAttacks();
     initBishopAttacks();
-    // initQueenAttacks();
 }

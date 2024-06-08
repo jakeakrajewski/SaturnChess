@@ -11,17 +11,17 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    // var occ: u64 = 0;
-    // bit.SetBit(&occ, .C5);
-    // bit.SetBit(&occ, .F2);
-    // bit.SetBit(&occ, .G7);
-    // bit.SetBit(&occ, .B2);
-    // bit.SetBit(&occ, .G5);
-    // bit.SetBit(&occ, .E2);
-    // bit.SetBit(&occ, .E7);
-    //
-    // try bit.Print(map.GenerateQueenAttacks(sqr.Square.toIndex(.D4), occ));
-    try printTestBoards();
+    var occ: u64 = 0;
+    bit.SetBit(&occ, .C5);
+    bit.SetBit(&occ, .F2);
+    bit.SetBit(&occ, .G7);
+    bit.SetBit(&occ, .B2);
+    bit.SetBit(&occ, .G5);
+    bit.SetBit(&occ, .E2);
+    bit.SetBit(&occ, .E7);
+
+    try bit.Print(map.GenerateQueenAttacks(sqr.Square.toIndex(.D4), occ));
+    // try printTestBoards();
 }
 
 pub fn printTestBoards() !void {
