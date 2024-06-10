@@ -32,9 +32,9 @@ pub fn LeastSignificantBit(bitboard: u64) u7 {
     return (@ctz(bitboard));
 }
 
-pub fn setOccupancy(index: usize, attackMask: u64) u64 {
+pub fn setOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
     var blockers: u64 = 0;
-    var bitsSet: u32 = 0;
+    var bitsSet: u7 = relevantBits;
 
     for (0..64) |i| {
         if ((attackMask & (@as(u64, 1) << @intCast(i))) != 0) {

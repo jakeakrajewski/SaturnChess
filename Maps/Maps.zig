@@ -472,7 +472,7 @@ pub fn initBishopAttacks() void {
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
-            const blockers = bit.setOccupancy(i, mask);
+            const blockers = bit.setOccupancy(i, bitCount, mask);
             const magicIndex = ((@as(u128, blockers) * bishop_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bitCount);
             bishopAttacks[square][@intCast(magicIndex)] = GenerateBishopAttacks(s, blockers);
         }
@@ -487,7 +487,7 @@ pub fn initRookAttacks() void {
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
-            const blockers = bit.setOccupancy(i, mask);
+            const blockers = bit.setOccupancy(i, bitCount, mask);
             const magicIndex = ((@as(u128, blockers) * rook_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bitCount);
             rookAttacks[square][@intCast(magicIndex)] = GenerateRookAttacks(s, blockers);
         }

@@ -12,6 +12,17 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
+
+    var occ: u64 = 0;
+    bit.SetBit(&occ, .C5);
+    bit.SetBit(&occ, .F2);
+    bit.SetBit(&occ, .G7);
+    bit.SetBit(&occ, .B2);
+    bit.SetBit(&occ, .G5);
+    bit.SetBit(&occ, .E2);
+    bit.SetBit(&occ, .E7);
+    try bit.Print(occ);
+    try bit.Print(map.GenerateBishopAttacks(sqr.Square.toIndex(.D4), occ));
     try printMoves();
 }
 
@@ -23,7 +34,7 @@ pub fn printMoves() !void {
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, 0);
+    try mv.GenerateMoves(&list, &brd, 1);
 
     for (0..list.items.len) |index| {
         var move = list.items[index];
