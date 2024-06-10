@@ -13,9 +13,6 @@ pub fn SetBit(bitBoard: *u64, square: sqr.Square) void {
 
 pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
     bitBoard.* ^= (@as(u64, 1) << @as(u6, square.toIndex()));
-    if (GetBit(bitBoard.*, square.toIndex()) != 1) {
-        bitBoard.* = 0;
-    }
 }
 
 pub fn BitCount(bitboard: u128) u6 {
@@ -30,9 +27,9 @@ pub fn BitCount(bitboard: u128) u6 {
     return count;
 }
 
-pub fn LeastSignificantBit(bitboard: *u64) i6 {
-    if (bitboard.* == 0) return -1;
-    return @intCast(@ctz(bitboard.*));
+pub fn LeastSignificantBit(bitboard: u64) u7 {
+    if (bitboard == 0) return 64;
+    return (@ctz(bitboard));
 }
 
 pub fn setOccupancy(index: usize, attackMask: u64) u64 {
