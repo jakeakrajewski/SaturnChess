@@ -470,16 +470,13 @@ pub fn initBishopAttacks() void {
     for (0..64) |square| {
         const s: u6 = @intCast(square);
         const mask = MaskBishopAttacks(s);
-        const bitCount = bishopRelevantBits[square];
+        const bitCount = bit.BitCount(mask);
+
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
             const blockers = bit.setOccupancy(i, bitCount, mask);
-            var magicIndex: u128 = blockers;
-            magicIndex &= mask;
-            magicIndex *= bishop_magic_numbers[s];
-            magicIndex &= 0xffffffffffffffff;
-            magicIndex >>= @intCast(64 - bitCount);
+            const magicIndex = ((@as(u128, blockers) * bishop_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bishopRelevantBits[square]);
             bishopAttacks[square][@intCast(magicIndex)] = GenerateBishopAttacks(s, blockers);
         }
     }
@@ -489,12 +486,12 @@ pub fn initRookAttacks() void {
     for (0..64) |square| {
         const s: u6 = @intCast(square);
         const mask = MaskRookAttacks(s);
-        const bitCount = rookRelevantBits[square];
+        const bitCount = bit.BitCount(mask);
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
             const blockers = bit.setOccupancy(i, bitCount, mask);
-            const magicIndex = ((@as(u128, blockers) * rook_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bitCount);
+            const magicIndex = ((@as(u128, blockers) * rook_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - rookRelevantBits[square]);
             rookAttacks[square][@intCast(magicIndex)] = GenerateRookAttacks(s, blockers);
         }
     }

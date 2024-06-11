@@ -15,7 +15,7 @@ pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
     bitBoard.* ^= (@as(u64, 1) << @as(u6, square.toIndex()));
 }
 
-pub fn BitCount(bitboard: u128) u6 {
+pub fn BitCount(bitboard: u128) u7 {
     var count: u6 = 0;
     var board = bitboard;
 

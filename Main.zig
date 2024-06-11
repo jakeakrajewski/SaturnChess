@@ -24,9 +24,6 @@ pub fn main() !void {
     try bit.Print(occ);
     try bit.Print(map.GetBishopAttacks(sqr.Square.toIndex(.D4), occ));
     try printMoves();
-
-    const mn = rand.FindMagicNumber(0, map.bishopRelevantBits[0], true);
-    try stdout.print("{}", .{mn});
 }
 
 pub fn printMoves() !void {
