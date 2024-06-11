@@ -436,6 +436,7 @@ pub fn GetBishopAttacks(square: u6, occupancy: u64) u64 {
     var occ = occupancy;
     occ &= bishopMask[square];
     occ *= bishop_magic_numbers[square];
+    occ &= 0xffffffffffffffff;
     occ >>= @intCast(64 - bishopRelevantBits[square]);
     return bishopAttacks[square][occ];
 }
@@ -444,6 +445,7 @@ pub fn GetRookAttacks(square: u6, occupancy: u64) u64 {
     var occ = occupancy;
     occ &= rookMask[square];
     occ *= rook_magic_numbers[square];
+    occ &= 0xffffffffffffffff;
     occ >>= @intCast(64 - rookRelevantBits[square]);
     return rookAttacks[square][occ];
 }
@@ -473,7 +475,11 @@ pub fn initBishopAttacks() void {
 
         for (0..permutations) |i| {
             const blockers = bit.setOccupancy(i, bitCount, mask);
-            const magicIndex = ((@as(u128, blockers) * bishop_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bitCount);
+            var magicIndex: u128 = blockers;
+            magicIndex &= mask;
+            magicIndex *= bishop_magic_numbers[s];
+            magicIndex &= 0xffffffffffffffff;
+            magicIndex >>= @intCast(64 - bitCount);
             bishopAttacks[square][@intCast(magicIndex)] = GenerateBishopAttacks(s, blockers);
         }
     }

@@ -22,8 +22,11 @@ pub fn main() !void {
     bit.SetBit(&occ, .E2);
     bit.SetBit(&occ, .E7);
     try bit.Print(occ);
-    try bit.Print(map.GenerateBishopAttacks(sqr.Square.toIndex(.D4), occ));
+    try bit.Print(map.GetBishopAttacks(sqr.Square.toIndex(.D4), occ));
     try printMoves();
+
+    const mn = rand.FindMagicNumber(0, map.bishopRelevantBits[0], true);
+    try stdout.print("{}", .{mn});
 }
 
 pub fn printMoves() !void {
@@ -34,7 +37,7 @@ pub fn printMoves() !void {
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, 1);
+    try mv.GenerateMoves(&list, &brd, 0);
 
     for (0..list.items.len) |index| {
         var move = list.items[index];

@@ -16,7 +16,7 @@ pub fn FindMagicNumber(square: u6, relevant_bits: u7, is_bishop: bool) u64 {
     const mask = if (is_bishop) map.MaskBishopAttacks(square) else map.MaskRookAttacks(square);
 
     for (0..occupancy_indices) |index| {
-        occupancies[index] = bitManip.setOccupancy(index, mask);
+        occupancies[index] = bitManip.setOccupancy(index, relevant_bits, mask);
         attacks[index] = if (is_bishop) map.GenerateBishopAttacks(square, occupancies[index]) else map.GenerateRookAttacks(square, occupancies[index]);
     }
     var attempt: usize = 0;

@@ -34,14 +34,14 @@ pub fn LeastSignificantBit(bitboard: u64) u7 {
 
 pub fn setOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
     var blockers: u64 = 0;
-    var bitsSet: u7 = relevantBits;
+    const bitsSet: u7 = relevantBits;
+    var mask = attackMask;
+    for (0..bitsSet) |i| {
+        const square: u6 = @intCast(LeastSignificantBit(mask));
+        PopBit(&mask, try sqr.Square.fromIndex(square));
 
-    for (0..64) |i| {
-        if ((attackMask & (@as(u64, 1) << @intCast(i))) != 0) {
-            if ((index & (@as(u32, 1) << @intCast(bitsSet))) != 0) {
-                blockers |= (@as(u64, 1) << @intCast(i));
-            }
-            bitsSet += 1;
+        if ((index & (@as(u64, 1) << @intCast(i))) > 0) {
+            blockers |= @as(u64, 1) << square;
         }
     }
 
