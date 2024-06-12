@@ -12,17 +12,6 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-
-    var occ: u64 = 0;
-    bit.SetBit(&occ, .C5);
-    bit.SetBit(&occ, .F2);
-    bit.SetBit(&occ, .G7);
-    bit.SetBit(&occ, .B2);
-    bit.SetBit(&occ, .G5);
-    bit.SetBit(&occ, .E2);
-    bit.SetBit(&occ, .E7);
-    try bit.Print(occ);
-    try bit.Print(map.GetBishopAttacks(sqr.Square.toIndex(.D4), occ));
     try printMoves();
 }
 
@@ -48,6 +37,7 @@ pub fn printMoves() !void {
         }
     }
 }
+
 pub fn printTestBoards() !void {
     var bitbrd: board.Board = board.emptyBoard();
     try bit.Print(bitbrd.wKing);

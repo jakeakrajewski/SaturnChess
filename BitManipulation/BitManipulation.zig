@@ -37,7 +37,7 @@ pub fn setOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
     const bitsSet: u7 = relevantBits;
     var mask = attackMask;
     for (0..bitsSet) |i| {
-        const square: u6 = @intCast(LeastSignificantBit(mask));
+        const square: u6 = @truncate(LeastSignificantBit(mask));
         PopBit(&mask, try sqr.Square.fromIndex(square));
 
         if ((index & (@as(u64, 1) << @intCast(i))) > 0) {

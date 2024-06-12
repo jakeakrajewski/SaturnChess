@@ -5,9 +5,10 @@ const bit = @import("../BitManipulation/BitManipulation.zig");
 const sqr = @import("../Board/Square.zig");
 
 pub fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
-    // try PawnMoves(list, board, side);
-    // try KnightMoves(list, board, side);
+    try PawnMoves(list, board, side);
+    try KnightMoves(list, board, side);
     try BishopMoves(list, board, side);
+    try RookMoves(list, board, side);
 }
 
 pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
@@ -143,6 +144,29 @@ pub fn BishopMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const source: u6 = @intCast(bit.LeastSignificantBit(bishops));
         bit.PopBit(&bishops, try sqr.Square.fromIndex(source));
         var targets = map.GetBishopAttacks(source, allPieces) & ~pieces;
+        while (targets > 0) {
+            const target: u6 = @intCast(bit.LeastSignificantBit(targets));
+            const targetSquare = @as(u64, 1) << target;
+            bit.PopBit(&targets, try sqr.Square.fromIndex(target));
+
+            if (targetSquare & enemyPieces > 0) {
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+            } else {
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+            }
+        }
+    }
+}
+
+pub fn RookMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
+    var rooks = if (side == 0) board.wRooks else board.bRooks;
+    const allPieces = board.wPieces | board.bPieces;
+    const pieces = if (side == 0) board.wPieces else board.bPieces;
+    const enemyPieces = if (side == 0) board.bPieces else board.wPieces;
+    while (rooks > 0) {
+        const source: u6 = @intCast(bit.LeastSignificantBit(rooks));
+        bit.PopBit(&rooks, try sqr.Square.fromIndex(source));
+        var targets = map.GetRookAttacks(source, allPieces) & ~pieces;
         while (targets > 0) {
             const target: u6 = @intCast(bit.LeastSignificantBit(targets));
             const targetSquare = @as(u64, 1) << target;
