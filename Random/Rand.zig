@@ -1,7 +1,7 @@
 const std = @import("std");
 const map = @import("../Maps/Maps.zig");
 const sqr = @import("../Board/Square.zig");
-const bitManip = @import("../BitManipulation/BitManipulation.zig");
+const bit = @import("../BitManipulation/BitManipulation.zig");
 
 const stdout = std.io.getStdOut().writer();
 
@@ -16,7 +16,7 @@ pub fn FindMagicNumber(square: u6, relevant_bits: u7, is_bishop: bool) u64 {
     const mask = if (is_bishop) map.MaskBishopAttacks(square) else map.MaskRookAttacks(square);
 
     for (0..occupancy_indices) |index| {
-        occupancies[index] = bitManip.setOccupancy(index, relevant_bits, mask);
+        occupancies[index] = bit.setOccupancy(index, relevant_bits, mask);
         attacks[index] = if (is_bishop) map.GenerateBishopAttacks(square, occupancies[index]) else map.GenerateRookAttacks(square, occupancies[index]);
     }
     var attempt: usize = 0;
@@ -25,7 +25,7 @@ pub fn FindMagicNumber(square: u6, relevant_bits: u7, is_bishop: bool) u64 {
         const magic = GenerateMagicNumber();
 
         // Ignore unsuitable magic numbers
-        if (bitManip.BitCount((@as(u128, mask) * magic) & 0xFF00000000000000) < 6) {
+        if (bit.BitCount((@as(u128, mask) * magic) & 0xFF00000000000000) < 6) {
             continue;
         }
 
