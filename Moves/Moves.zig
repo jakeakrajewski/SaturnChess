@@ -10,7 +10,8 @@ pub fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !v
     // try BishopMoves(list, board, side);
     // try RookMoves(list, board, side);
     // try QueenMoves(list, board, side);
-    try KingMoves(list, board, side);
+    // try KingMoves(list, board, side);
+    try CastleMoves(list, board, side);
 }
 
 pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
@@ -32,17 +33,17 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
             var pieceAtTarget: bool = (@as(u64, 1) << target) & allPieces > 0;
             if (!pieceAtTarget) {
                 if (rank == 7) {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .castle = .N, .isCapture = false });
                 } else {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
 
                     pieceAtTarget = (@as(u64, 1) << target - 8) & allPieces > 0;
                     if (rank == 2 and !pieceAtTarget) {
                         // Double pawn push
-                        try list.append(Move{ .source = source, .target = target - 8, .promotion = 0, .isCapture = false });
+                        try list.append(Move{ .source = source, .target = target - 8, .promotion = 0, .castle = .N, .isCapture = false });
                     }
                 }
             }
@@ -55,12 +56,12 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
                 bit.PopBit(&attackMap, try sqr.Square.fromIndex(@intCast(target)));
 
                 if (rank == 7) {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .castle = .N, .isCapture = true });
                 } else {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
                 }
             }
         }
@@ -79,17 +80,17 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
             var pieceAtTarget: bool = (@as(u64, 1) << target) & allPieces > 0;
             if (!pieceAtTarget) {
                 if (rank == 2) {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .isCapture = false });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .castle = .N, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .castle = .N, .isCapture = false });
                 } else {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
 
                     pieceAtTarget = (@as(u64, 1) << target + 8) & allPieces > 0;
                     if (rank == 7 and !pieceAtTarget) {
                         // Double pawn push
-                        try list.append(Move{ .source = source, .target = target + 8, .promotion = 0, .isCapture = false });
+                        try list.append(Move{ .source = source, .target = target + 8, .promotion = 0, .castle = .N, .isCapture = false });
                     }
                 }
             }
@@ -103,12 +104,12 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
                 bit.PopBit(&attackMap, try sqr.Square.fromIndex(@intCast(target)));
 
                 if (rank == 7) {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .isCapture = true });
-                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 1, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 2, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 3, .castle = .N, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 4, .castle = .N, .isCapture = true });
                 } else {
-                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                    try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
                 }
             }
         }
@@ -129,9 +130,9 @@ pub fn KnightMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
             bit.PopBit(&targets, try sqr.Square.fromIndex(target));
 
             if (targetSquare & enemyPieces > 0) {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
             } else {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
             }
         }
     }
@@ -152,9 +153,9 @@ pub fn BishopMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
             bit.PopBit(&targets, try sqr.Square.fromIndex(target));
 
             if (targetSquare & enemyPieces > 0) {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
             } else {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
             }
         }
     }
@@ -175,9 +176,9 @@ pub fn RookMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
             bit.PopBit(&targets, try sqr.Square.fromIndex(target));
 
             if (targetSquare & enemyPieces > 0) {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
             } else {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
             }
         }
     }
@@ -200,9 +201,9 @@ pub fn QueenMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void
             bit.PopBit(&targets, try sqr.Square.fromIndex(target));
 
             if (targetSquare & enemyPieces > 0) {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
             } else {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
             }
         }
     }
@@ -222,25 +223,75 @@ pub fn KingMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
             bit.PopBit(&targets, try sqr.Square.fromIndex(target));
 
             if (targetSquare & enemyPieces > 0) {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = true });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = true });
             } else {
-                try list.append(Move{ .source = source, .target = target, .promotion = 0, .isCapture = false });
+                try list.append(Move{ .source = source, .target = target, .promotion = 0, .castle = .N, .isCapture = false });
             }
         }
     }
 }
-// pub fn BishopMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) void {}
-// pub fn RookMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) void {}
-// pub fn QueenMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) void {}
+
+pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
+    const rooks = if (side == 0) board.wRooks else board.bRooks;
+    const king = if (side == 0) board.wKing else board.bKing;
+    const atHomeSquare: bool = (side == 1 and king == (1 << 4)) or (side == 0 and king == (1 << 60));
+    const allPieces = board.wPieces | board.bPieces;
+    if (!atHomeSquare) return;
+
+    if (side == 0) {
+        const kingSideRook: bool = (rooks & (map.FILE_H & map.RANK_1)) > 0;
+        const queenSideRook: bool = (rooks & (map.FILE_A & map.RANK_1)) > 0;
+        const b1 = sqr.Square.toIndex(.B1);
+        const c1 = sqr.Square.toIndex(.C1);
+        const d1 = sqr.Square.toIndex(.D1);
+        const f1 = sqr.Square.toIndex(.F1);
+        const g1 = sqr.Square.toIndex(.G1);
+        const kingSideCastleEmpty = bit.GetBit(allPieces, f1) == 0 and bit.GetBit(allPieces, g1) == 0;
+        const kingSideCastleAttacked = board.isSquareAttacked(f1, 0) or board.isSquareAttacked(g1, 0);
+        const queenSideCastleEmpty = bit.GetBit(allPieces, b1) == 0 and bit.GetBit(allPieces, c1) == 0 and bit.GetBit(allPieces, d1) == 0;
+        const queenSideCastleAttacked = board.isSquareAttacked(b1, 0) or board.isSquareAttacked(c1, 0) or board.isSquareAttacked(d1, 0);
+
+        if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
+            try list.append(Move{ .source = 60, .target = 62, .promotion = 0, .castle = .WK, .isCapture = false });
+        }
+        if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
+            try list.append(Move{ .source = 60, .target = 58, .promotion = 0, .castle = .WQ, .isCapture = false });
+        }
+    } else {
+        const kingSideRook: bool = (rooks & (map.FILE_H & map.RANK_8)) > 0;
+        const queenSideRook: bool = (rooks & (map.FILE_A & map.RANK_8)) > 0;
+        const b8 = sqr.Square.toIndex(.B8);
+        const c8 = sqr.Square.toIndex(.C8);
+        const d8 = sqr.Square.toIndex(.D8);
+        const f8 = sqr.Square.toIndex(.F8);
+        const g8 = sqr.Square.toIndex(.G8);
+        const kingSideCastleEmpty = bit.GetBit(allPieces, f8) == 0 and bit.GetBit(allPieces, g8) == 0;
+        const kingSideCastleAttacked = board.isSquareAttacked(f8, 1) or board.isSquareAttacked(g8, 1);
+        const queenSideCastleEmpty = bit.GetBit(allPieces, b8) == 0 and bit.GetBit(allPieces, c8) == 0 and bit.GetBit(allPieces, d8) == 0;
+        const queenSideCastleAttacked = board.isSquareAttacked(b8, 1) or board.isSquareAttacked(c8, 1) or board.isSquareAttacked(d8, 1);
+
+        if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
+            try list.append(Move{ .source = 4, .target = 6, .promotion = 0, .castle = .WK, .isCapture = false });
+        }
+        if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
+            try list.append(Move{ .source = 4, .target = 2, .promotion = 0, .castle = .WQ, .isCapture = false });
+        }
+    }
+}
 
 pub const Move = struct {
     source: u6,
     target: u6,
     promotion: u3,
+    castle: brd.Castle,
     isCapture: bool,
 
     pub fn isPromotion(self: *Move) bool {
         return self.promotion != 0;
+    }
+
+    pub fn isCastle(self: *Move) bool {
+        return self.Castle != .N;
     }
 };
 

@@ -4,7 +4,7 @@ const sqr = @import("./Square.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
 
 pub const Color = enum { WHITE, BLACK };
-pub const Castle = enum(u4) { WK = 1, WQ = 2, BK = 4, BQ = 8 };
+pub const Castle = enum(u4) { N = 0, WK = 1, WQ = 2, BK = 4, BQ = 8 };
 pub const Pieces = enum(u4) { P = 0, N = 1, B = 2, R = 3, Q = 4, K = 5, p = 6, n = 7, b = 8, r = 9, q = 10, k = 11 };
 pub const AsciiPieces: [12][]const u8 = .{ "P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k" };
 pub const UnicodePieces: [12][]const u8 = .{ "♙", "♘", "♗", "♖", "♕", "♔", "♟︎", "♞", "♝", "♜", "♛", "♚" };

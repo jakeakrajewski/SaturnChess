@@ -48,19 +48,19 @@ pub fn setOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
     return blockers;
 }
 
-pub fn Print(bitBoard: u64) !void {
-    try stdout.print("\n", .{});
+pub fn Print(bitBoard: u64) void {
+    std.debug.print("\n", .{});
     for (0..8) |rank| {
         for (0..8) |file| {
             const square: u6 = @intCast(rank * 8 + file);
             const r = 8 - rank;
             const bit: u64 = if (GetBit(bitBoard, square) != 0) 1 else 0;
-            try if (file == 0) stdout.print("  {d} ", .{r});
-            try stdout.print(" {d}", .{bit});
+            if (file == 0) std.debug.print("  {d} ", .{r});
+            std.debug.print(" {d}", .{bit});
         }
-        try stdout.print("\n", .{});
+        std.debug.print("\n", .{});
     }
 
-    try stdout.print("     A B C D E F G H \n", .{});
-    try stdout.print("{d}", .{bitBoard});
+    std.debug.print("     A B C D E F G H \n", .{});
+    std.debug.print("{d}", .{bitBoard});
 }
