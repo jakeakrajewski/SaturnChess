@@ -31,9 +31,9 @@ pub fn printMoves() !void {
         const end = try sqr.Square.fromIndex(move.target);
         if (move.isPromotion()) {
             const promo: mv.Promotion = @enumFromInt(move.promotion);
-            try stdout.print("{s} {s} Promotion: {}\n", .{ start.toString(), end.toString(), promo });
+            std.debug.print("{s} {s} Promotion: {}\n", .{ start.toString(), end.toString(), promo });
         } else {
-            try stdout.print("{s} {s}\n", .{ start.toString(), end.toString() });
+            std.debug.print("{s} {s}\n", .{ start.toString(), end.toString() });
         }
     }
 }
