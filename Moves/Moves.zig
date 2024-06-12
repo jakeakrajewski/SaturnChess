@@ -271,10 +271,10 @@ pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const queenSideCastleAttacked = board.isSquareAttacked(b8, 1) or board.isSquareAttacked(c8, 1) or board.isSquareAttacked(d8, 1);
 
         if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
-            try list.append(Move{ .source = 4, .target = 6, .promotion = 0, .castle = .WK, .isCapture = false });
+            try list.append(Move{ .source = 4, .target = 6, .promotion = 0, .castle = .BK, .isCapture = false });
         }
         if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
-            try list.append(Move{ .source = 4, .target = 2, .promotion = 0, .castle = .WQ, .isCapture = false });
+            try list.append(Move{ .source = 4, .target = 2, .promotion = 0, .castle = .BQ, .isCapture = false });
         }
     }
 }
