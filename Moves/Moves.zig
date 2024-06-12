@@ -5,12 +5,12 @@ const bit = @import("../BitManipulation/BitManipulation.zig");
 const sqr = @import("../Board/Square.zig");
 
 pub fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
-    // try PawnMoves(list, board, side);
-    // try KnightMoves(list, board, side);
-    // try BishopMoves(list, board, side);
-    // try RookMoves(list, board, side);
-    // try QueenMoves(list, board, side);
-    // try KingMoves(list, board, side);
+    try PawnMoves(list, board, side);
+    try KnightMoves(list, board, side);
+    try BishopMoves(list, board, side);
+    try RookMoves(list, board, side);
+    try QueenMoves(list, board, side);
+    try KingMoves(list, board, side);
     try CastleMoves(list, board, side);
 }
 

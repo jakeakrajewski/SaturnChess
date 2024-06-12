@@ -23,7 +23,7 @@ pub fn printMoves() !void {
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, 1);
+    try mv.GenerateMoves(&list, &brd, 0);
 
     for (0..list.items.len) |index| {
         var move = list.items[index];
