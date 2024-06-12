@@ -3,7 +3,7 @@ const map = @import("Maps/Maps.zig");
 const bit = @import("BitManipulation/BitManipulation.zig");
 const sqr = @import("Board/Square.zig");
 const rand = @import("Random/Rand.zig");
-const board = @import("Game/Board.zig");
+const board = @import("Board/Board.zig");
 const fen = @import("Testing/FenStrings.zig");
 const mv = @import("Moves/Moves.zig");
 

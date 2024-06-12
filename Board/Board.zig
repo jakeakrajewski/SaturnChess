@@ -1,7 +1,6 @@
 const Maps = @import("../Maps/Maps.zig");
-const color = @import("./Color.zig");
 const std = @import("std");
-const sqr = @import("../Board/Square.zig");
+const sqr = @import("./Square.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
 
 pub const Color = enum { WHITE, BLACK };
@@ -30,9 +29,6 @@ pub fn PieceFromString(piece: u8) Pieces {
 
 pub var bitboards: [12]u64 = undefined;
 pub var occupancies: [3]u64 = undefined;
-
-const WHITE = color.Color.WHITE;
-const BLACK = color.Color.BLACK;
 
 pub const Board = struct {
     wPieces: u64,

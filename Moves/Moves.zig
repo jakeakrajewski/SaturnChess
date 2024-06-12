@@ -1,5 +1,5 @@
 const std = @import("std");
-const brd = @import("../Game/Board.zig");
+const brd = @import("../Board/Board.zig");
 const map = @import("../Maps/Maps.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
 const sqr = @import("../Board/Square.zig");
