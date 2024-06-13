@@ -31,14 +31,12 @@ pub var bitboards: [12]u64 = undefined;
 pub var occupancies: [3]u64 = undefined;
 
 pub const Board = struct {
-    wPieces: u64,
     wPawns: u64,
     wKnights: u64,
     wBishops: u64,
     wRooks: u64,
     wQueens: u64,
     wKing: u64,
-    bPieces: u64,
     bPawns: u64,
     bKnights: u64,
     bBishops: u64,
@@ -50,6 +48,16 @@ pub const Board = struct {
     castle: u4,
 
     const emptySquares: u64 = ~(.wPieces | .bPieces);
+
+    pub fn bPieces(self: *Board) u64 {
+        return self.bPawns | self.bKnights | self.bBishops | self.bRooks | self.bQueens | self.bKing;
+    }
+    pub fn wPieces(self: *Board) u64 {
+        return self.wPawns | self.wKnights | self.wBishops | self.wRooks | self.wQueens | self.wKing;
+    }
+    pub fn allPieces(self: *Board) u64 {
+        return self.wPieces() | self.bPieces();
+    }
 
     pub fn isSquareAttacked(self: *Board, square: u6, side: u1) bool {
         if (side == 0) {
@@ -64,11 +72,9 @@ pub const Board = struct {
         const queens = if (side == 0) self.bQueens else self.wQueens;
         const king = if (side == 0) self.bKing else self.wKing;
 
-        const allPieces = self.wPieces | self.bPieces;
-
-        if ((Maps.GenerateBishopAttacks(square, allPieces) & bishops) > 0) return true;
-        if ((Maps.GenerateRookAttacks(square, allPieces) & rooks) > 0) return true;
-        if ((Maps.GenerateQueenAttacks(square, allPieces) & queens) > 0) return true;
+        if ((Maps.GenerateBishopAttacks(square, self.allPieces()) & bishops) > 0) return true;
+        if ((Maps.GenerateRookAttacks(square, self.allPieces()) & rooks) > 0) return true;
+        if ((Maps.GenerateQueenAttacks(square, self.allPieces()) & queens) > 0) return true;
         if ((Maps.knightAttacks[square] & knights) > 0) return true;
         if ((Maps.kingAttacks[square] & king) > 0) return true;
         return false;
@@ -77,10 +83,57 @@ pub const Board = struct {
     pub fn isEmptySquare(self: *Board, square: u6) bool {
         return @as(u64, square) & ~(self.wPieces | self.bPieces) > 0;
     }
+
+    pub fn GetWhitePieceBitBoard(self: *Board, piece: Pieces) *u64 {
+        switch (piece) {
+            Pieces.P => {
+                return &self.wPawns;
+            },
+            Pieces.N => {
+                return &self.wKnights;
+            },
+            Pieces.B => {
+                return &self.wBishops;
+            },
+            Pieces.R => {
+                return &self.wRooks;
+            },
+            Pieces.Q => {
+                return &self.wQueens;
+            },
+            Pieces.K => {
+                return &self.wKing;
+            },
+            else => @panic("Invalid piece"),
+        }
+    }
+    pub fn GetBlackPieceBitBoard(self: *Board, piece: Pieces) *u64 {
+        switch (piece) {
+            Pieces.p => {
+                return &self.bPawns;
+            },
+            Pieces.n => {
+                return &self.bKnights;
+            },
+            Pieces.b => {
+                return &self.bBishops;
+            },
+            Pieces.r => {
+                return &self.bRooks;
+            },
+            Pieces.q => {
+                return &self.bQueens;
+            },
+            Pieces.k => {
+                return &self.bKing;
+            },
+            else => @panic("Invalid piece"),
+        }
+    }
 };
 
 pub fn emptyBoard() Board {
-    return Board{ .wPieces = 0, .wPawns = 0, .wKnights = 0, .wBishops = 0, .wRooks = 0, .wQueens = 0, .wKing = 0, .bPieces = 0, .bPawns = 0, .bKnights = 0, .bBishops = 0, .bRooks = 0, .bQueens = 0, .bKing = 0, .enPassantSquare = undefined, .sideToMove = 0, .castle = 0 };
+    return Board{ .wPawns = 0, .wKnights = 0, .wBishops = 0, .wRooks = 0, .wQueens = 0, .wKing = 0, .bPawns = 0, .bKnights = 0, .bBishops = 0, .bRooks = 0, .bQueens = 0, .bKing = 0, .enPassantSquare = undefined, .sideToMove = 0, .castle = 0 };
 }
 
 pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
@@ -112,51 +165,39 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
                 switch (piece) {
                     Pieces.P => {
                         board.wPawns |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.N => {
                         board.wKnights |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.B => {
                         board.wBishops |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.R => {
                         board.wRooks |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.Q => {
                         board.wQueens |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.K => {
                         board.wKing |= bitMask;
-                        board.wPieces |= bitMask;
                     },
                     Pieces.p => {
                         board.bPawns |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                     Pieces.n => {
                         board.bKnights |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                     Pieces.b => {
                         board.bBishops |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                     Pieces.r => {
                         board.bRooks |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                     Pieces.q => {
                         board.bQueens |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                     Pieces.k => {
                         board.bKing |= bitMask;
-                        board.bPieces |= bitMask;
                     },
                 }
                 file += 1;
@@ -184,7 +225,7 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
         const fileChar = enPassantSquareStr[0];
         const rankChar = enPassantSquareStr[1];
         const f = fileChar - 'a';
-        const r = rankChar - '1';
+        const r = '8' - rankChar;
         const bitPos: u64 = (r * 8) + f;
         board.enPassantSquare = @as(u64, 1) << @intCast(bitPos);
     } else {

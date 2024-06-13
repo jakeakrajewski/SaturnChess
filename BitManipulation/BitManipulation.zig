@@ -12,7 +12,7 @@ pub fn SetBit(bitBoard: *u64, square: sqr.Square) void {
 }
 
 pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
-    bitBoard.* ^= (@as(u64, 1) << @as(u6, square.toIndex()));
+    bitBoard.* &= ~(@as(u64, 1) << @as(u6, square.toIndex()));
 }
 
 pub fn BitCount(bitboard: u128) u7 {

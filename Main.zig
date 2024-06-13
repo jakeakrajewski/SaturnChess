@@ -13,11 +13,12 @@ var stdin = std.io.getStdIn().reader();
 pub fn main() !void {
     try map.InitializeAttackTables();
     try printMoves();
+    try makeMoves();
 }
 
 pub fn printMoves() !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.tricky_position_with_promotion, &brd);
+    board.setBoardFromFEN(fen.tricky_position, &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
@@ -27,14 +28,43 @@ pub fn printMoves() !void {
 
     for (0..list.items.len) |index| {
         var move = list.items[index];
-        const start = try sqr.Square.fromIndex(move.source);
-        const end = try sqr.Square.fromIndex(move.target);
+        var start = try sqr.Square.fromIndex(move.source);
+        var end = try sqr.Square.fromIndex(move.target);
         if (move.isPromotion()) {
-            const promo: mv.Promotion = @enumFromInt(move.promotion);
-            std.debug.print("{s} {s} Promotion: {}\n", .{ start.toString(), end.toString(), promo });
+            const promo = move.promotion;
+            std.debug.print("{s} {s} Promotion: {}", .{ start.toString(), end.toString(), promo });
         } else {
-            std.debug.print("{s} {s}\n", .{ start.toString(), end.toString() });
+            std.debug.print("{s} {s} {}", .{ start.toString(), end.toString(), move.isEnpassant });
         }
+        std.debug.print(" Encoded: {}", .{move.Convert()});
+        const decoded = mv.fromU24(move.Convert());
+        start = try sqr.Square.fromIndex(decoded.source);
+        end = try sqr.Square.fromIndex(decoded.target);
+        std.debug.print(" Decoded: {s} {s}\n", .{ start.toString(), end.toString() });
+    }
+}
+
+pub fn makeMoves() !void {
+    var brd = board.emptyBoard();
+    board.setBoardFromFEN(fen.kinginCheck, &brd);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const allocator = arena.allocator();
+    var list = std.ArrayList(mv.Move).init(allocator);
+    defer list.deinit();
+    try mv.GenerateMoves(&list, &brd, 0);
+    var brdCopy = brd;
+    std.debug.print("Castle Rights: {d}", .{brdCopy.castle});
+    bit.Print(brdCopy.allPieces());
+    const move = list.items[1];
+    var start = try sqr.Square.fromIndex(move.source);
+    var end = try sqr.Square.fromIndex(move.target);
+    std.debug.print("{s} {s}", .{ start.toString(), end.toString() });
+    const result = mv.MakeMove(move, &brdCopy, 0);
+    if (result) {
+        bit.Print(brdCopy.allPieces());
+        std.debug.print("Castle Rights: {d}", .{brdCopy.castle});
+    } else {
+        std.debug.print("king in check", .{});
     }
 }
 
