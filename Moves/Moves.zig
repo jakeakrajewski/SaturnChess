@@ -12,6 +12,20 @@ pub fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !v
     try QueenMoves(list, board, side);
     try KingMoves(list, board, side);
     try CastleMoves(list, board, side);
+
+    var moveList: std.ArrayList(Move) = try list.clone();
+    moveList.clearRetainingCapacity();
+
+    for (0..list.items.len) |i| {
+        var boardCopy = board.*;
+        const result = MakeMove(list.items[i], &boardCopy, side);
+
+        if (result) {
+            try moveList.append(list.items[i]);
+        }
+    }
+    list.clearAndFree();
+    try list.appendSlice(moveList.items);
 }
 
 pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {

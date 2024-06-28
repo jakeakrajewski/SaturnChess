@@ -6,14 +6,21 @@ const rand = @import("Random/Rand.zig");
 const board = @import("Board/Board.zig");
 const fen = @import("Testing/FenStrings.zig");
 const mv = @import("Moves/Moves.zig");
+const perft = @import("Perft/Perft.zig");
 
 var stdout = std.io.getStdOut().writer();
 var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try printMoves();
-    try makeMoves();
+    try RunPerft();
+}
+
+pub fn RunPerft() !void {
+    var brd: board.Board = undefined;
+    board.setBoardFromFEN(fen.tricky_position, &brd);
+    const nodes = try perft.Perft(&brd, 2, 0);
+    std.debug.print("{} Moves", .{nodes});
 }
 
 pub fn printMoves() !void {
@@ -26,6 +33,7 @@ pub fn printMoves() !void {
 
     try mv.GenerateMoves(&list, &brd, 0);
 
+    std.debug.print("Total Moves: {d}\n\n", .{list.items.len});
     for (0..list.items.len) |index| {
         var move = list.items[index];
         var start = try sqr.Square.fromIndex(move.source);
