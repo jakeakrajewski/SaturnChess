@@ -77,7 +77,7 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N, .isCapture = true });
                 } else {
                     if (target == epSquare) {
-                        try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnpassant = true });
+                        try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnPassant = true });
                     } else {
                         try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
                     }
@@ -123,14 +123,14 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void 
 
                 bit.PopBit(&attackMap, try sqr.Square.fromIndex(@intCast(target)));
 
-                if (rank == 7) {
+                if (rank == 2) {
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .Q, .isCapture = true });
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .R, .isCapture = true });
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .B, .isCapture = true });
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N, .isCapture = true });
                 } else {
                     if (target == epSquare) {
-                        try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnpassant = true });
+                        try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnPassant = true });
                     } else {
                         try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
                     }
@@ -322,7 +322,7 @@ pub const Move = struct {
     promotion: Promotion = .X,
     isCapture: bool = false,
     isDoublePush: bool = false,
-    isEnpassant: bool = false,
+    isEnPassant: bool = false,
     castle: brd.Castle = .N,
 
     pub fn isPromotion(self: *Move) bool {
@@ -330,7 +330,7 @@ pub const Move = struct {
     }
 
     pub fn isCastle(self: *Move) bool {
-        return self.Castle != .N;
+        return self.castle != .N;
     }
     pub fn Convert(self: *Move) u24 {
         return @as(u24, self.source) |
@@ -339,7 +339,7 @@ pub const Move = struct {
             (@as(u24, @intFromEnum(self.promotion)) << 16) |
             (@as(u24, @intFromBool(self.isCapture)) << 20) |
             (@as(u24, @intFromBool(self.isDoublePush)) << 21) |
-            (@as(u24, @intFromBool(self.isEnpassant)) << 22) |
+            (@as(u24, @intFromBool(self.isEnPassant)) << 22) |
             (@as(u24, @intFromEnum(self.castle)) << 23);
     }
 };
@@ -351,7 +351,7 @@ pub fn fromU24(encoded: u24) Move {
     const promotion: Promotion = @enumFromInt((encoded >> 16) & 0x7);
     const isCapture: bool = (encoded & (1 << 20)) != 0;
     const isDoublePush: bool = (encoded & (1 << 21)) != 0;
-    const isEnpassant: bool = (encoded & (1 << 22)) != 0;
+    const isEnPassant: bool = (encoded & (1 << 22)) != 0;
     const castle: brd.Castle = @enumFromInt((encoded >> 23) & 0x3);
 
     return Move{
@@ -361,7 +361,7 @@ pub fn fromU24(encoded: u24) Move {
         .promotion = promotion,
         .isCapture = isCapture,
         .isDoublePush = isDoublePush,
-        .isEnpassant = isEnpassant,
+        .isEnPassant = isEnPassant,
         .castle = castle,
     };
 }
@@ -465,7 +465,7 @@ pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
     } else {
         if (move.isCapture) {
             if (side == 0) {
-                if (move.isEnpassant) {
+                if (move.isEnPassant) {
                     bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target + 8));
                 } else {
                     bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target));
@@ -476,7 +476,7 @@ pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
                     bit.PopBit(&board.bKing, try sqr.Square.fromIndex(move.target));
                 }
             } else {
-                if (move.isEnpassant) {
+                if (move.isEnPassant) {
                     bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target - 8));
                 } else {
                     bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target));
@@ -526,7 +526,7 @@ pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
         }
     }
     const kingSquare = if (side == 0) bit.LeastSignificantBit(board.wKing) else bit.LeastSignificantBit(board.bKing);
-    if (board.isSquareAttacked(@truncate(kingSquare), side)) {
+    if (board.isSquareAttacked(@intCast(kingSquare), side)) {
         return false;
     }
 

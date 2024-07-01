@@ -61,9 +61,9 @@ pub const Board = struct {
 
     pub fn isSquareAttacked(self: *Board, square: u6, side: u1) bool {
         if (side == 0) {
-            if ((Maps.pawnAttacks[1][square] & self.wPawns) > 0) return true;
-        } else {
             if ((Maps.pawnAttacks[0][square] & self.bPawns) > 0) return true;
+        } else {
+            if ((Maps.pawnAttacks[1][square] & self.wPawns) > 0) return true;
         }
 
         const knights = if (side == 0) self.bKnights else self.wKnights;
@@ -72,8 +72,8 @@ pub const Board = struct {
         const queens = if (side == 0) self.bQueens else self.wQueens;
         const king = if (side == 0) self.bKing else self.wKing;
 
-        if ((Maps.GenerateBishopAttacks(square, self.allPieces()) & bishops) > 0) return true;
-        if ((Maps.GenerateRookAttacks(square, self.allPieces()) & rooks) > 0) return true;
+        if ((Maps.GetBishopAttacks(square, self.allPieces()) & bishops) > 0) return true;
+        if ((Maps.GetRookAttacks(square, self.allPieces()) & rooks) > 0) return true;
         if ((Maps.GenerateQueenAttacks(square, self.allPieces()) & queens) > 0) return true;
         if ((Maps.knightAttacks[square] & knights) > 0) return true;
         if ((Maps.kingAttacks[square] & king) > 0) return true;
