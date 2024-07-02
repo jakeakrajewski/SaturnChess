@@ -18,6 +18,15 @@ pub fn main() !void {
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
+    // CheckPin();
+}
+pub fn CheckPin() void {
+    var brd: board.Board = undefined;
+    board.setBoardFromFEN(fen.pinTest2, &brd);
+
+    bit.Print(brd.allPieces());
+    bit.Print(mv.GetPinMask(brd, 0));
+    bit.Print(mv.GetCheckMask(brd, 0));
 }
 
 pub fn RunPerft() !void {
@@ -38,7 +47,7 @@ pub fn RunPerft() !void {
 
 pub fn printMoves() !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.tricky_position, &brd);
+    board.setBoardFromFEN(fen.doubleEnPassant, &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
@@ -67,7 +76,7 @@ pub fn printMoves() !void {
 
 pub fn makeMoves() !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.kinginCheck, &brd);
+    board.setBoardFromFEN(fen.doubleEnPassant, &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
@@ -92,7 +101,7 @@ pub fn makeMoves() !void {
 pub fn printTestBoards() void {
     var bitbrd: board.Board = board.emptyBoard();
     bit.Print(bitbrd.wKing);
-    board.setBoardFromFEN(fen.checkWithBlocker, &bitbrd);
+    board.setBoardFromFEN(fen.doubleEnPassant, &bitbrd);
 
     std.debug.print("\nWhite Pawns: \n", .{});
     bit.Print(bitbrd.wPawns);

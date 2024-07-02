@@ -10,3 +10,7 @@ pub const pawnCapture = "4k3/8/8/5p2/4P3/3K4/8/8 w KQkq - 0 1";
 pub const singleMove = "8/1p1p1p1p/pPpPpPpP/P1p1PpPk/KpPpPP1p/pPpPpPpP/P1P1P1P1/8 w KQkq - 0 1";
 pub const blackResponse = "8/1p1p1p1p/pPpPpPpP/P1p1PPPk/KpPp1P1p/pPpPpPpP/P1P1P1P1/8 b KQkq - 0 1";
 pub const testfen = "8/8/8/8/8/3K4/2Q5/1k6 b - - 0 1";
+pub const pawnCaptureTest = "k7/8/pppppppp/PPPPPPPP/8/8/8/K7 w KQkq - 1 2";
+pub const doubleEnPassant = "k7/8/8/3PpP2/8/8/8/K7 w KQkq e6 1 2";
+pub const pinTest = "k7/4q3/3p4/4P3/8/4K3/8/8 w KQkq - 1 2";
+pub const pinTest2 = "k7/4q3/3p4/8/8/4K3/8/8 w KQkq - 1 2";

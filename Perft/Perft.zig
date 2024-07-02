@@ -2,6 +2,8 @@ const std = @import("std");
 const fen = @import("../Testing/FenStrings.zig");
 const brd = @import("../Board/Board.zig");
 const move = @import("../Moves/Moves.zig");
+const bit = @import("../BitManipulation/BitManipulation.zig");
+const sqr = @import("../Board/Square.zig");
 
 pub fn Perft(board: *brd.Board, depth: u8, side: u1) !Position {
     const otherSide: u1 = if (side == 0) 1 else 0;
@@ -28,6 +30,13 @@ pub fn Perft(board: *brd.Board, depth: u8, side: u1) !Position {
             pos.Castles += newPos.Castles;
             pos.Promotions += newPos.Promotions;
         } else {
+            const m = moves.items[i];
+            var start = try sqr.Square.fromIndex(m.source);
+            var end = try sqr.Square.fromIndex(m.target);
+            std.debug.print("Piece: {}", .{m.piece});
+            std.debug.print("Start: {s}", .{start.toString()});
+            std.debug.print("End: {s}", .{end.toString()});
+            bit.Print(board.allPieces());
             @panic("Illegal Move");
         }
     }
