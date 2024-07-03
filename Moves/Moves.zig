@@ -195,7 +195,7 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
         attackMap &= (opponentPieces | board.enPassantSquare);
         while (attackMap > 0) {
             target = @intCast(bit.LeastSignificantBit(attackMap));
-
+						targetBoard = @as(u64, 1) << target;
             bit.PopBit(&attackMap, try sqr.Square.fromIndex(@intCast(target)));
 
             if (checkMask > 0) {
