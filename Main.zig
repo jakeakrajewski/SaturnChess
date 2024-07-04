@@ -13,7 +13,7 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try RunPerft();
+    try RunPerft(fen.start_position, 6);
     // try printMoves();
     // printTestBoards();
     // IsKingAttacked();
@@ -22,19 +22,19 @@ pub fn main() !void {
 }
 pub fn CheckPin() void {
     var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.pinTest2, &brd);
-
+    board.setBoardFromFEN(fen.stockfish, &brd);
     bit.Print(brd.allPieces());
-    bit.Print(mv.GetPinMask(brd, 0));
-    bit.Print(mv.GetCheckMask(brd, 0));
+    bit.Print(mv.GetPinMask(brd, 1));
+    bit.Print(mv.GetCheckMask(brd, 1));
 }
 
-pub fn RunPerft() !void {
+pub fn RunPerft(position: []const u8, depth: u8) !void {
     var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.start_position, &brd);
-    const depth: u8 = 6;
+    board.setBoardFromFEN(position, &brd);
     const startTime = std.time.milliTimestamp();
-    const pos = try perft.Perft(&brd, depth, 0);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const allocator = arena.allocator();
+    const pos = try perft.Perft(&brd, depth, depth, 1, allocator);
     const endTime = std.time.milliTimestamp();
     const diff: u64 = @intCast(endTime - startTime);
     std.debug.print("\nMoves: {}", .{pos.Nodes});
@@ -47,13 +47,13 @@ pub fn RunPerft() !void {
 
 pub fn printMoves() !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.doubleEnPassant, &brd);
+    board.setBoardFromFEN(fen.stockfish, &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, 0);
+    try mv.GenerateMoves(&list, &brd, 1);
 
     std.debug.print("Total Moves: {d}\n\n", .{list.items.len});
     for (0..list.items.len) |index| {

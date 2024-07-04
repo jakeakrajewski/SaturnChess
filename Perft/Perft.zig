@@ -5,11 +5,12 @@ const move = @import("../Moves/Moves.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
 const sqr = @import("../Board/Square.zig");
 
-pub fn Perft(board: *brd.Board, depth: u8, side: u1) !Position {
+const Allocator = std.mem.Allocator;
+
+pub fn Perft(board: *brd.Board, startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
     const otherSide: u1 = if (side == 0) 1 else 0;
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    const allocator = arena.allocator();
     var moves = std.ArrayList(move.Move).init(allocator);
+    defer moves.deinit();
     try move.GenerateMoves(&moves, board, side);
 
     var pos: Position = Position{};
@@ -23,12 +24,15 @@ pub fn Perft(board: *brd.Board, depth: u8, side: u1) !Position {
         var cBoard = board.*;
         const result = move.MakeMove(moves.items[i], &cBoard, side);
         if (result) {
-            const newPos = try Perft(&cBoard, depth - 1, otherSide);
+            const newPos = try Perft(&cBoard, startDepth, depth - 1, otherSide, allocator);
             pos.Nodes += newPos.Nodes;
             pos.Captures += newPos.Captures;
             pos.EnPassant += newPos.EnPassant;
             pos.Castles += newPos.Castles;
             pos.Promotions += newPos.Promotions;
+            var start = try sqr.Square.fromIndex(moves.items[i].source);
+            var end = try sqr.Square.fromIndex(moves.items[i].target);
+            if (depth == startDepth) std.debug.print("\n     {s}{s}: {}", .{ start.toString(), end.toString(), newPos.Nodes });
         } else {
             const m = moves.items[i];
             var start = try sqr.Square.fromIndex(m.source);

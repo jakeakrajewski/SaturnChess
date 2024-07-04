@@ -28,12 +28,14 @@ pub fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !v
 }
 
 pub fn GetPinMask(board: brd.Board, side: u1) u64 {
+    var b = board;
     var bishops = if (side == 0) board.bBishops else board.wBishops;
     var rooks = if (side == 0) board.bRooks else board.wRooks;
     var queens = if (side == 0) board.bQueens else board.wQueens;
     const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const pieces = if (side == 0) b.wPieces() else b.bPieces();
+    const oPieces = if (side == 0) b.bPieces() else b.wPieces();
     const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
-    var b = board;
 
     var bishopMask: u64 = 0;
     var rookMask: u64 = 0;
@@ -42,32 +44,61 @@ pub fn GetPinMask(board: brd.Board, side: u1) u64 {
 
     while (bishops > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(bishops));
-        bishopMask |= map.GetBishopAttacks(source, b.allPieces());
+        const sourceBoard: u64 = @as(u64, 1) << source;
+        const bishopCheck = (sourceBoard & map.GetBishopAttacks(kingSquare, b.allPieces()));
+
+        if (bishopCheck > 0) {
+            bit.PopBit(&bishops, try sqr.Square.fromIndex(source));
+            continue;
+        }
+
+        if ((sourceBoard & map.GetBishopAttacks(kingSquare, oPieces)) > 0) {
+            bishopMask |= map.GetBishopAttacks(source, pieces);
+        }
         bit.PopBit(&bishops, try sqr.Square.fromIndex(source));
+        bishopMask &= map.GetBishopAttacks(kingSquare, sourceBoard);
     }
-    bishopMask &= map.bishopMask[kingSquare];
 
     while (rooks > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(rooks));
-        rookMask |= map.GetRookAttacks(source, b.allPieces());
+        const sourceBoard: u64 = @as(u64, 1) << source;
+        const rookCheck = (sourceBoard & map.GetRookAttacks(kingSquare, b.allPieces()));
+
+        if (rookCheck > 0) {
+            bit.PopBit(&rooks, try sqr.Square.fromIndex(source));
+            continue;
+        }
+
+        if ((sourceBoard & map.GetRookAttacks(kingSquare, oPieces)) > 0) {
+            rookMask |= map.GetRookAttacks(source, pieces);
+        }
         bit.PopBit(&rooks, try sqr.Square.fromIndex(source));
+        rookMask &= map.GetRookAttacks(kingSquare, sourceBoard);
     }
-    rookMask &= map.rookMask[kingSquare];
 
     while (queens > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(queens));
+        const sourceBoard: u64 = @as(u64, 1) << source;
 
-        if ((queens & map.bishopMask[kingSquare]) > 0) {
-            queenBishopMask |= map.GetBishopAttacks(source, b.allPieces());
+        const bishopCheck = (sourceBoard & map.GetBishopAttacks(kingSquare, b.allPieces()));
+        const rookCheck = (sourceBoard & map.GetRookAttacks(kingSquare, b.allPieces()));
+
+        if (bishopCheck > 0 or rookCheck > 0) {
+            bit.PopBit(&queens, try sqr.Square.fromIndex(source));
+            continue;
         }
-        if ((queens & map.rookMask[kingSquare]) > 0) {
-            queenRookMask |= map.GetRookAttacks(source, b.allPieces());
+
+        if ((sourceBoard & map.GetBishopAttacks(kingSquare, oPieces)) > 0) {
+            queenBishopMask |= map.GetBishopAttacks(source, pieces);
+        }
+        if ((sourceBoard & map.GetRookAttacks(kingSquare, oPieces)) > 0) {
+            queenRookMask |= map.GetRookAttacks(source, pieces);
         }
 
         bit.PopBit(&queens, try sqr.Square.fromIndex(source));
+        queenRookMask &= map.GetRookAttacks(kingSquare, sourceBoard);
+        queenBishopMask &= map.GetBishopAttacks(kingSquare, sourceBoard);
     }
-    queenBishopMask &= map.bishopMask[kingSquare];
-    queenRookMask &= map.rookMask[kingSquare];
 
     return bishopMask | rookMask | queenRookMask | queenBishopMask;
 }
@@ -83,50 +114,52 @@ pub fn GetCheckMask(board: brd.Board, side: u1) u64 {
     const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
     var b = board;
 
+    var mask: u64 = 0;
+
     while (pawns > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(pawns));
         const attackMask = map.pawnAttacks[oSide][source];
         const sourceBoard: u64 = @as(u64, 1) << source;
-        if ((attackMask & kingBoard) > 0) return sourceBoard;
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard;
         bit.PopBit(&pawns, try sqr.Square.fromIndex(source));
     }
     while (knights > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(knights));
         const attackMask = map.knightAttacks[source];
         const sourceBoard: u64 = @as(u64, 1) << source;
-        if ((attackMask & kingBoard) > 0) return sourceBoard;
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard;
         bit.PopBit(&knights, try sqr.Square.fromIndex(source));
     }
     while (bishops > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(bishops));
-        const kingSliders = map.bishopMask[kingSquare];
+        const kingSliders = map.GetBishopAttacks(kingSquare, bishops);
         const attackMask = map.GetBishopAttacks(source, b.allPieces());
         const sourceBoard: u64 = (@as(u64, 1) << source) | attackMask;
-        if ((attackMask & kingBoard) > 0) return sourceBoard & kingSliders;
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard & kingSliders;
         bit.PopBit(&bishops, try sqr.Square.fromIndex(source));
     }
     while (rooks > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(rooks));
-        const kingSliders = map.rookMask[kingSquare];
+        const kingSliders = map.GetRookAttacks(kingSquare, rooks);
         const attackMask = map.GetRookAttacks(source, b.allPieces());
         const sourceBoard: u64 = (@as(u64, 1) << source) | attackMask;
-        if ((attackMask & kingBoard) > 0) return sourceBoard & kingSliders;
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard & kingSliders;
         bit.PopBit(&rooks, try sqr.Square.fromIndex(source));
     }
     while (queens > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(queens));
-        var kingSliders = map.bishopMask[kingSquare];
+        var kingSliders = map.GetBishopAttacks(kingSquare, queens);
         var attackMask = map.GetBishopAttacks(source, b.allPieces());
         var sourceBoard: u64 = (@as(u64, 1) << source) | attackMask;
-        if ((attackMask & kingBoard) > 0) return sourceBoard & kingSliders;
-        kingSliders = map.rookMask[kingSquare];
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard & kingSliders;
+        kingSliders = map.GetRookAttacks(kingSquare, queens);
         attackMask = map.GetRookAttacks(source, b.allPieces());
         sourceBoard = (@as(u64, 1) << source) | attackMask;
-        if ((attackMask & kingBoard) > 0) return sourceBoard & kingSliders;
+        if ((attackMask & kingBoard) > 0) mask |= sourceBoard & kingSliders;
         bit.PopBit(&queens, try sqr.Square.fromIndex(source));
     }
 
-    return 0;
+    return mask;
 }
 
 pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkMask: u64, pinMask: u64) !void {
@@ -136,6 +169,8 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
     const doubleRank: u4 = if (side == 0) 2 else 7;
     var bitBoard: u64 = if (side == 0) board.wPawns else board.bPawns;
     const opponentPieces: u64 = if (side == 0) board.bPieces() else board.wPieces();
+    const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
 
     while (bitBoard > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(bitBoard));
@@ -143,12 +178,13 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
         bit.PopBit(&bitBoard, try sqr.Square.fromIndex(source));
         if (source == 64) break;
 
+        const rank: u4 = @intCast(8 - (source / 8));
         var target: u6 = @intCast(source + direction);
         if (target < 0) continue;
 
         const sourceBoard = @as(u64, 1) << source;
-        const targetBoard = @as(u64, 1) << target;
-        const doubleBoard = @as(u64, 1) << @intCast(target + direction);
+        var targetBoard = @as(u64, 1) << target;
+        const doubleBoard = if (rank == doubleRank) @as(u64, 1) << @intCast(target + direction) else 0;
         var singlePossible = true;
         var doublePossible = true;
         var piecePinned = false;
@@ -166,11 +202,9 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
             }
 
-            const check = GetCheckMask(boardCopy, side);
-            if ((check & targetBoard) == 0) piecePinned = true;
+            if (boardCopy.isSquareAttacked(kingSquare, side) > 0) piecePinned = true;
         }
 
-        const rank: u4 = @intCast(8 - (source / 8));
         var pieceAtTarget: bool = targetBoard & board.allPieces() > 0;
         if (!pieceAtTarget and !piecePinned) {
             if (rank == promotionRank and singlePossible) {
@@ -183,10 +217,12 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                     try list.append(Move{ .source = source, .target = target, .piece = piece });
                 }
 
-                pieceAtTarget = (@as(u64, 1) << @intCast(target + direction)) & board.allPieces() > 0;
-                if (rank == doubleRank and !pieceAtTarget and doublePossible) {
+                if (rank == doubleRank and doublePossible) {
                     // Double pawn push
-                    try list.append(Move{ .source = source, .target = @intCast(target + direction), .piece = piece, .isDoublePush = true });
+                    pieceAtTarget = bit.GetBit(board.allPieces(), @intCast(target + direction)) > 0;
+                    if (!pieceAtTarget) {
+                        try list.append(Move{ .source = source, .target = @intCast(target + direction), .piece = piece, .isDoublePush = true });
+                    }
                 }
             }
         }
@@ -195,7 +231,7 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
         attackMap &= (opponentPieces | board.enPassantSquare);
         while (attackMap > 0) {
             target = @intCast(bit.LeastSignificantBit(attackMap));
-						targetBoard = @as(u64, 1) << target;
+            targetBoard = @as(u64, 1) << target;
             bit.PopBit(&attackMap, try sqr.Square.fromIndex(@intCast(target)));
 
             if (checkMask > 0) {
@@ -210,12 +246,21 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 var boardCopy = board.*;
                 if (side == 0) {
                     bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(target));
                 } else {
                     bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(target));
                 }
 
-                const check = GetCheckMask(boardCopy, side);
-                if ((check & targetBoard) == 0) continue;
+                if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
             }
 
             if (rank == promotionRank) {
@@ -225,7 +270,21 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N, .isCapture = true });
             } else {
                 if (target == epSquare) {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnPassant = true });
+                    const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
+
+                    var boardCopy = board.*;
+
+                    if (side == 0) {
+                        bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(source));
+                        bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(epTarget));
+                    } else {
+                        bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
+                        bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(epTarget));
+                    }
+
+                    if (boardCopy.isSquareAttacked(kingSquare, side) == 0) {
+                        try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnPassant = true });
+                    }
                 } else {
                     try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
                 }
@@ -328,6 +387,8 @@ pub fn KnightMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, chec
     var knights = if (side == 0) board.wKnights else board.bKnights;
     const pieces = if (side == 0) board.wPieces() else board.bPieces();
     const enemyPieces = if (side == 0) board.bPieces() else board.wPieces();
+    const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
     while (knights > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(knights));
         bit.PopBit(&knights, try sqr.Square.fromIndex(source));
@@ -346,7 +407,16 @@ pub fn KnightMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, chec
                 }
             }
 
-            if ((pinMask & sourceBoard) > 0) continue;
+            if ((pinMask & sourceBoard) > 0) {
+                var boardCopy = board.*;
+                if (side == 0) {
+                    bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(source));
+                } else {
+                    bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(source));
+                }
+
+                if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
+            }
 
             if (targetBoard & enemyPieces > 0) {
                 try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
@@ -362,6 +432,8 @@ pub fn BishopMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, chec
     var bishops = if (side == 0) board.wBishops else board.bBishops;
     const pieces = if (side == 0) board.wPieces() else board.bPieces();
     const enemyPieces = if (side == 0) board.bPieces() else board.wPieces();
+    const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
     while (bishops > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(bishops));
         bit.PopBit(&bishops, try sqr.Square.fromIndex(source));
@@ -386,12 +458,21 @@ pub fn BishopMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, chec
                 var boardCopy = board.*;
                 if (side == 0) {
                     bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(target));
                 } else {
                     bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(target));
                 }
 
-                const check = GetCheckMask(boardCopy, side);
-                if ((check & targetBoard) == 0) continue;
+                if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
             }
 
             if (targetSquare & enemyPieces > 0) {
@@ -408,6 +489,9 @@ pub fn RookMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
     var rooks = if (side == 0) board.wRooks else board.bRooks;
     const pieces = if (side == 0) board.wPieces() else board.bPieces();
     const enemyPieces = if (side == 0) board.bPieces() else board.wPieces();
+    const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
+
     while (rooks > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(rooks));
         bit.PopBit(&rooks, try sqr.Square.fromIndex(source));
@@ -431,12 +515,21 @@ pub fn RookMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 var boardCopy = board.*;
                 if (side == 0) {
                     bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(target));
                 } else {
                     bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(target));
                 }
 
-                const check = GetCheckMask(boardCopy, side);
-                if ((check & targetBoard) == 0) continue;
+                if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
             }
 
             if (targetBoard & enemyPieces > 0) {
@@ -453,6 +546,8 @@ pub fn QueenMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, check
     var queens = if (side == 0) board.wQueens else board.bQueens;
     const pieces = if (side == 0) board.wPieces() else board.bPieces();
     const enemyPieces = if (side == 0) board.bPieces() else board.wPieces();
+    const kingBoard = if (side == 0) board.wKing else board.bKing;
+    const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
     while (queens > 0) {
         const source: u6 = @intCast(bit.LeastSignificantBit(queens));
         bit.PopBit(&queens, try sqr.Square.fromIndex(source));
@@ -478,14 +573,22 @@ pub fn QueenMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, check
                 var boardCopy = board.*;
                 if (side == 0) {
                     bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(target));
                 } else {
                     bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(source));
+                    bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(target));
+                    bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(target));
                 }
 
-                const check = GetCheckMask(boardCopy, side);
-                if ((check & targetBoard) == 0) continue;
+                if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
             }
-
             if (targetBoard & enemyPieces > 0) {
                 try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
             } else {
@@ -547,7 +650,7 @@ pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f1) == 0 and bit.GetBit(board.allPieces(), g1) == 0;
         const kingSideCastleAttacked = board.isSquareAttacked(f1, 0) > 0 or board.isSquareAttacked(g1, 0) > 0;
         const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b1) == 0 and bit.GetBit(board.allPieces(), c1) == 0 and bit.GetBit(board.allPieces(), d1) == 0;
-        const queenSideCastleAttacked = board.isSquareAttacked(b1, 0) > 0 or board.isSquareAttacked(c1, 0) > 0 or board.isSquareAttacked(d1, 0) > 0;
+        const queenSideCastleAttacked = board.isSquareAttacked(c1, 0) > 0 or board.isSquareAttacked(d1, 0) > 0;
 
         if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
             try list.append(Move{
@@ -576,7 +679,7 @@ pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f8) == 0 and bit.GetBit(board.allPieces(), g8) == 0;
         const kingSideCastleAttacked = board.isSquareAttacked(f8, 1) > 0 or board.isSquareAttacked(g8, 1) > 0;
         const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b8) == 0 and bit.GetBit(board.allPieces(), c8) == 0 and bit.GetBit(board.allPieces(), d8) == 0;
-        const queenSideCastleAttacked = board.isSquareAttacked(b8, 1) > 0 or board.isSquareAttacked(c8, 1) > 0 or board.isSquareAttacked(d8, 1) > 0;
+        const queenSideCastleAttacked = board.isSquareAttacked(c8, 1) > 0 or board.isSquareAttacked(d8, 1) > 0;
 
         if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
             try list.append(Move{ .source = 4, .target = 6, .piece = piece, .castle = .BK });
@@ -593,6 +696,7 @@ pub const Move = struct {
     piece: brd.Pieces,
     promotion: Promotion = .X,
     isCapture: bool = false,
+    isCheck: bool = false,
     isDoublePush: bool = false,
     isEnPassant: bool = false,
     castle: brd.Castle = .N,
