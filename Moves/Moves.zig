@@ -240,7 +240,34 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 const blockerChecker = (checkMask & targetBoard) > 0;
 
                 if (!blockerChecker) {
-                    continue;
+                    var boardCopy = board.*;
+                    if (side == 0) {
+                        bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(source));
+                        bit.SetBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                        if (target == epSquare) {
+                            const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
+                            bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(epTarget));
+                        }
+                        bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.bRooks, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.bQueens, try sqr.Square.fromIndex(target));
+                    } else {
+                        bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
+                        bit.SetBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                        if (target == epSquare) {
+                            const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
+                            bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(epTarget));
+                        }
+                        bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.wRooks, try sqr.Square.fromIndex(target));
+                        bit.PopBit(&boardCopy.wQueens, try sqr.Square.fromIndex(target));
+                    }
+
+                    if (boardCopy.isSquareAttacked(kingSquare, side) > 0) continue;
                 }
             }
 
@@ -249,6 +276,10 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 if (side == 0) {
                     bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(source));
                     bit.SetBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
+                    if (target == epSquare) {
+                        const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
+                        bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(epTarget));
+                    }
                     bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
                     bit.PopBit(&boardCopy.bKnights, try sqr.Square.fromIndex(target));
                     bit.PopBit(&boardCopy.bBishops, try sqr.Square.fromIndex(target));
@@ -257,6 +288,10 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
                 } else {
                     bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
                     bit.SetBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
+                    if (target == epSquare) {
+                        const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
+                        bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(epTarget));
+                    }
                     bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
                     bit.PopBit(&boardCopy.wKnights, try sqr.Square.fromIndex(target));
                     bit.PopBit(&boardCopy.wBishops, try sqr.Square.fromIndex(target));
@@ -275,7 +310,6 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
             } else {
                 if (target == epSquare) {
                     const epTarget = if (side == 0) epSquare + 8 else epSquare - 8;
-
                     var boardCopy = board.*;
 
                     if (side == 0) {

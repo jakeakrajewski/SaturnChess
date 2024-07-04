@@ -19,4 +19,4 @@ pub const pawnCaptureTest = "k7/8/pppppppp/PPPPPPPP/8/8/8/K7 w KQkq - 1 2";
 pub const doubleEnPassant = "k7/8/8/3PpP2/8/8/8/K7 w KQkq e6 1 2";
 pub const pinTest = "8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1";
 pub const promoTest = "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1";
-pub const stockfish = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2Nb1Q1p/PPPB1PPP/R3K2R w kq - 0 1";
+pub const stockfish = "8/2p5/3p4/KP5r/5p1k/8/4P1P1/1R6 b - - 0 1";

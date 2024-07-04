@@ -13,7 +13,7 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try RunPerft(fen.position5, 5);
+    try RunPerft(fen.position3, 6);
     try printMoves();
     // printTestBoards();
     // IsKingAttacked();
@@ -47,7 +47,7 @@ pub fn RunPerft(position: []const u8, depth: u8) !void {
 
 pub fn printMoves() !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.stockfish, &brd);
+    board.setBoardFromFEN("8/8/3p4/1Pp4r/1K3p2/6k1/4P1P1/1R6 w - c6 0 1", &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
