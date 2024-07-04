@@ -669,26 +669,29 @@ pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const d1 = sqr.Square.toIndex(.D1);
         const f1 = sqr.Square.toIndex(.F1);
         const g1 = sqr.Square.toIndex(.G1);
-        const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f1) == 0 and bit.GetBit(board.allPieces(), g1) == 0;
-        const kingSideCastleAttacked = board.isSquareAttacked(f1, 0) > 0 or board.isSquareAttacked(g1, 0) > 0;
-        const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b1) == 0 and bit.GetBit(board.allPieces(), c1) == 0 and bit.GetBit(board.allPieces(), d1) == 0;
-        const queenSideCastleAttacked = board.isSquareAttacked(c1, 0) > 0 or board.isSquareAttacked(d1, 0) > 0;
-
-        if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
-            try list.append(Move{
-                .source = 60,
-                .target = 62,
-                .piece = piece,
-                .castle = .WK,
-            });
+        if (board.castle & 1 > 0) {
+            const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f1) == 0 and bit.GetBit(board.allPieces(), g1) == 0;
+            const kingSideCastleAttacked = board.isSquareAttacked(f1, 0) > 0 or board.isSquareAttacked(g1, 0) > 0;
+            if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
+                try list.append(Move{
+                    .source = 60,
+                    .target = 62,
+                    .piece = piece,
+                    .castle = .WK,
+                });
+            }
         }
-        if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
-            try list.append(Move{
-                .source = 60,
-                .target = 58,
-                .piece = piece,
-                .castle = .WQ,
-            });
+        if (board.castle & 2 > 0) {
+            const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b1) == 0 and bit.GetBit(board.allPieces(), c1) == 0 and bit.GetBit(board.allPieces(), d1) == 0;
+            const queenSideCastleAttacked = board.isSquareAttacked(c1, 0) > 0 or board.isSquareAttacked(d1, 0) > 0;
+            if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
+                try list.append(Move{
+                    .source = 60,
+                    .target = 58,
+                    .piece = piece,
+                    .castle = .WQ,
+                });
+            }
         }
     } else {
         const kingSideRook: bool = (rooks & (map.FILE_H & map.RANK_8)) > 0;
@@ -698,16 +701,19 @@ pub fn CastleMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !voi
         const d8 = sqr.Square.toIndex(.D8);
         const f8 = sqr.Square.toIndex(.F8);
         const g8 = sqr.Square.toIndex(.G8);
-        const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f8) == 0 and bit.GetBit(board.allPieces(), g8) == 0;
-        const kingSideCastleAttacked = board.isSquareAttacked(f8, 1) > 0 or board.isSquareAttacked(g8, 1) > 0;
-        const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b8) == 0 and bit.GetBit(board.allPieces(), c8) == 0 and bit.GetBit(board.allPieces(), d8) == 0;
-        const queenSideCastleAttacked = board.isSquareAttacked(c8, 1) > 0 or board.isSquareAttacked(d8, 1) > 0;
-
-        if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
-            try list.append(Move{ .source = 4, .target = 6, .piece = piece, .castle = .BK });
+        if (board.castle & 4 > 0) {
+            const kingSideCastleEmpty = bit.GetBit(board.allPieces(), f8) == 0 and bit.GetBit(board.allPieces(), g8) == 0;
+            const kingSideCastleAttacked = board.isSquareAttacked(f8, 1) > 0 or board.isSquareAttacked(g8, 1) > 0;
+            if (kingSideRook and kingSideCastleEmpty and !kingSideCastleAttacked) {
+                try list.append(Move{ .source = 4, .target = 6, .piece = piece, .castle = .BK });
+            }
         }
-        if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
-            try list.append(Move{ .source = 4, .target = 2, .piece = piece, .castle = .BQ });
+        if (board.castle & 8 > 0) {
+            const queenSideCastleEmpty = bit.GetBit(board.allPieces(), b8) == 0 and bit.GetBit(board.allPieces(), c8) == 0 and bit.GetBit(board.allPieces(), d8) == 0;
+            const queenSideCastleAttacked = board.isSquareAttacked(c8, 1) > 0 or board.isSquareAttacked(d8, 1) > 0;
+            if (queenSideRook and queenSideCastleEmpty and !queenSideCastleAttacked) {
+                try list.append(Move{ .source = 4, .target = 2, .piece = piece, .castle = .BQ });
+            }
         }
     }
 }

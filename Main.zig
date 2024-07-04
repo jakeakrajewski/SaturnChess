@@ -13,7 +13,7 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try RunPerft(fen.tricky_position, 5);
+    try RunPerft(fen.position5, 5);
     try printMoves();
     // printTestBoards();
     // IsKingAttacked();
