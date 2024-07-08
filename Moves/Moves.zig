@@ -314,9 +314,11 @@ pub fn PawnMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1, checkM
 
                     if (side == 0) {
                         bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(source));
+                        bit.SetBit(&boardCopy.wPawns, try sqr.Square.fromIndex(target));
                         bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(epTarget));
                     } else {
                         bit.PopBit(&boardCopy.bPawns, try sqr.Square.fromIndex(source));
+                        bit.SetBit(&boardCopy.bPawns, try sqr.Square.fromIndex(target));
                         bit.PopBit(&boardCopy.wPawns, try sqr.Square.fromIndex(epTarget));
                     }
 

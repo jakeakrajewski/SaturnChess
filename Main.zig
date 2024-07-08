@@ -13,19 +13,22 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try RunPerft(fen.position3, 6);
-    try printMoves();
+    const depth: u8 = 5;
+    const side: u1 = 0;
+    const position: []const u8 = "r3k2r/Pppp1ppp/1b3nbN/nPP5/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 b kq - 0 1";
+    try RunPerft(position, depth);
+    try printMoves(position, side);
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
     // CheckPin();
 }
-pub fn CheckPin() void {
+pub fn CheckPin(position: []const u8, side: u1) void {
     var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.tricky_position, &brd);
+    board.setBoardFromFEN(position, &brd);
     bit.Print(brd.allPieces());
-    bit.Print(mv.GetPinMask(brd, 1));
-    bit.Print(mv.GetCheckMask(brd, 1));
+    bit.Print(mv.GetPinMask(brd, side));
+    bit.Print(mv.GetCheckMask(brd, side));
 }
 
 pub fn RunPerft(position: []const u8, depth: u8) !void {
@@ -45,15 +48,15 @@ pub fn RunPerft(position: []const u8, depth: u8) !void {
     std.debug.print("\nElapsed Time: {} ms", .{diff});
 }
 
-pub fn printMoves() !void {
+pub fn printMoves(position: []const u8, side: u1) !void {
     var brd = board.emptyBoard();
-    board.setBoardFromFEN("8/8/3p4/1Pp4r/1K3p2/6k1/4P1P1/1R6 w - c6 0 1", &brd);
+    board.setBoardFromFEN(position, &brd);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, 0);
+    try mv.GenerateMoves(&list, &brd, side);
 
     std.debug.print("Total Moves: {d}\n\n", .{list.items.len});
     for (0..list.items.len) |index| {
