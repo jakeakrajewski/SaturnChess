@@ -35,11 +35,11 @@ pub fn CheckPin(position: []const u8, side: u1) void {
 pub fn RunPerft(position: []const u8, depth: u8) !void {
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(position, &board);
-    const startTime = std.time.milliTimestamp();
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var moves = std.ArrayList(mv.Move).init(allocator);
     defer moves.deinit();
+    const startTime = std.time.milliTimestamp();
     const pos = try perft.Perft(&board, moves, depth, depth, board.sideToMove, allocator);
     const endTime = std.time.milliTimestamp();
     const diff: u64 = @intCast(endTime - startTime);
@@ -49,6 +49,8 @@ pub fn RunPerft(position: []const u8, depth: u8) !void {
     std.debug.print("\nPromotions: {}", .{pos.Promotions});
     std.debug.print("\nCastles: {}", .{pos.Castles});
     std.debug.print("\nElapsed Time: {} ms", .{diff});
+    std.debug.print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
+    std.debug.print("\nMake Move Time: {} ms", .{pos.MakeTime});
 }
 
 pub fn printMoves(position: []const u8, side: u1) !void {
