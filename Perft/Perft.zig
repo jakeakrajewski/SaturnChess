@@ -7,10 +7,9 @@ const sqr = @import("../Board/Square.zig");
 
 const Allocator = std.mem.Allocator;
 
-pub fn Perft(board: *brd.Board, startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
+pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
     const otherSide: u1 = if (side == 0) 1 else 0;
-    var moves = std.ArrayList(move.Move).init(allocator);
-    defer moves.deinit();
+    var moves = list;
     try move.GenerateMoves(&moves, board, side);
 
     var pos: Position = Position{};
@@ -24,7 +23,7 @@ pub fn Perft(board: *brd.Board, startDepth: u8, depth: u8, side: u1, allocator: 
         var cBoard = board.*;
         const result = move.MakeMove(moves.items[i], &cBoard, side);
         if (result) {
-            const newPos = try Perft(&cBoard, startDepth, depth - 1, otherSide, allocator);
+            const newPos = try Perft(&cBoard, list, startDepth, depth - 1, otherSide, allocator);
             pos.Nodes += newPos.Nodes;
             pos.Captures += newPos.Captures;
             pos.EnPassant += newPos.EnPassant;

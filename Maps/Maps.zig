@@ -356,7 +356,8 @@ pub fn GenerateRookAttacks(square: u6, blockers: u64) u64 {
     attacks ^= (@as(u64, 1) << square);
     return attacks;
 }
-pub fn GetBishopAttacks(square: u6, occupancy: u64) u64 {
+
+pub inline fn GetBishopAttacks(square: u6, occupancy: u64) u64 {
     var occ: u128 = @intCast(occupancy);
     occ &= bishopMask[square];
     occ *= bishop_magic_numbers[square];
@@ -365,7 +366,7 @@ pub fn GetBishopAttacks(square: u6, occupancy: u64) u64 {
     return bishopAttacks[square][@intCast(occ)];
 }
 
-pub fn GetRookAttacks(square: u6, occupancy: u64) u64 {
+pub inline fn GetRookAttacks(square: u6, occupancy: u64) u64 {
     var occ: u128 = @intCast(occupancy);
     occ &= rookMask[square];
     occ *= rook_magic_numbers[square];
@@ -374,7 +375,7 @@ pub fn GetRookAttacks(square: u6, occupancy: u64) u64 {
     return rookAttacks[square][@intCast(occ)];
 }
 
-pub fn GenerateQueenAttacks(square: u6, blockers: u64) u64 {
+pub inline fn GenerateQueenAttacks(square: u6, blockers: u64) u64 {
     const rook = GetRookAttacks(square, blockers);
     const bishop = GetBishopAttacks(square, blockers);
     return rook | bishop;

@@ -1,4 +1,4 @@
-const Maps = @import("../Maps/Maps.zig");
+const map = @import("../Maps/Maps.zig");
 const std = @import("std");
 const sqr = @import("./Square.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
@@ -59,12 +59,12 @@ pub const Board = struct {
         return self.wPieces() | self.bPieces();
     }
 
-    pub fn isSquareAttacked(self: *Board, square: u6, side: u1) u6 {
+    pub inline fn isSquareAttacked(self: *Board, square: u6, side: u1) u6 {
         var attackers: u6 = 0;
         if (side == 0) {
-            if ((Maps.pawnAttacks[0][square] & self.bPawns) > 0) attackers += 1;
+            if ((map.pawnAttacks[0][square] & self.bPawns) > 0) attackers += 1;
         } else {
-            if ((Maps.pawnAttacks[1][square] & self.wPawns) > 0) attackers += 1;
+            if ((map.pawnAttacks[1][square] & self.wPawns) > 0) attackers += 1;
         }
 
         const knights = if (side == 0) self.bKnights else self.wKnights;
@@ -73,19 +73,45 @@ pub const Board = struct {
         const queens = if (side == 0) self.bQueens else self.wQueens;
         const king = if (side == 0) self.bKing else self.wKing;
 
-        if ((Maps.GetBishopAttacks(square, self.allPieces()) & bishops) > 0) attackers += 1;
-        if ((Maps.GetRookAttacks(square, self.allPieces()) & rooks) > 0) attackers += 1;
-        if ((Maps.GenerateQueenAttacks(square, self.allPieces()) & queens) > 0) attackers += 1;
-        if ((Maps.knightAttacks[square] & knights) > 0) attackers += 1;
-        if ((Maps.kingAttacks[square] & king) > 0) attackers += 1;
+        if ((map.GetBishopAttacks(square, self.allPieces()) & bishops) > 0) attackers += 1;
+        if ((map.GetRookAttacks(square, self.allPieces()) & rooks) > 0) attackers += 1;
+        if ((map.GenerateQueenAttacks(square, self.allPieces()) & queens) > 0) attackers += 1;
+        if ((map.knightAttacks[square] & knights) > 0) attackers += 1;
+        if ((map.kingAttacks[square] & king) > 0) attackers += 1;
         return attackers;
     }
 
-    pub fn isEmptySquare(self: *Board, square: u6) bool {
+    pub inline fn isEmptySquare(self: *Board, square: u6) bool {
         return @as(u64, square) & ~(self.wPieces | self.bPieces) > 0;
     }
 
-    pub fn GetWhitePieceBitBoard(self: *Board, piece: Pieces) *u64 {
+    pub inline fn GetPieceAttacks(self: *Board, piece: Pieces, source: u6, side: u1) u64 {
+        const occupancy = if (side == 0) self.wPieces() else self.bPieces();
+        switch (piece) {
+            .P, .p => {
+                return map.pawnAttacks[side][source];
+            },
+            .N, .n => {
+                return map.knightAttacks[source] & ~occupancy;
+            },
+            .B, .b => {
+                return map.GetBishopAttacks(source, self.allPieces()) & ~occupancy;
+            },
+            .R, .r => {
+                return map.GetRookAttacks(source, self.allPieces()) & ~occupancy;
+            },
+            .Q, .q => {
+                const rookTargets = map.GetRookAttacks(source, self.allPieces()) & ~occupancy;
+                const bishopTargets = map.GetBishopAttacks(source, self.allPieces()) & ~occupancy;
+                return rookTargets | bishopTargets;
+            },
+            .K, .k => {
+                return map.kingAttacks[source] & ~occupancy;
+            },
+        }
+    }
+
+    pub inline fn GetPieceBitBoard(self: *Board, piece: Pieces) *u64 {
         switch (piece) {
             Pieces.P => {
                 return &self.wPawns;
@@ -105,11 +131,6 @@ pub const Board = struct {
             Pieces.K => {
                 return &self.wKing;
             },
-            else => @panic("Invalid piece"),
-        }
-    }
-    pub fn GetBlackPieceBitBoard(self: *Board, piece: Pieces) *u64 {
-        switch (piece) {
             Pieces.p => {
                 return &self.bPawns;
             },
@@ -128,7 +149,81 @@ pub const Board = struct {
             Pieces.k => {
                 return &self.bKing;
             },
-            else => @panic("Invalid piece"),
+        }
+    }
+
+    pub inline fn UpdateBoard(self: *Board, piece: Pieces, source: u6, target: u6, side: u1, isEP: bool) void {
+        switch (piece) {
+            Pieces.P => {
+                bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wPawns, try sqr.Square.fromIndex(target));
+                if (isEP) {
+                    const epSquare: u6 = @truncate(bit.LeastSignificantBit(self.enPassantSquare));
+                    bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(epSquare + 8));
+                }
+            },
+            Pieces.N => {
+                bit.PopBit(&self.wKnights, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wKnights, try sqr.Square.fromIndex(target));
+            },
+            Pieces.B => {
+                bit.PopBit(&self.wBishops, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wBishops, try sqr.Square.fromIndex(target));
+            },
+            Pieces.R => {
+                bit.PopBit(&self.wRooks, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wRooks, try sqr.Square.fromIndex(target));
+            },
+            Pieces.Q => {
+                bit.PopBit(&self.wQueens, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wQueens, try sqr.Square.fromIndex(target));
+            },
+            Pieces.K => {
+                bit.PopBit(&self.wKing, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.wKing, try sqr.Square.fromIndex(target));
+            },
+            Pieces.p => {
+                bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bPawns, try sqr.Square.fromIndex(target));
+                if (isEP) {
+                    const epSquare: u6 = @truncate(bit.LeastSignificantBit(self.enPassantSquare));
+                    bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(epSquare - 8));
+                }
+            },
+            Pieces.n => {
+                bit.PopBit(&self.bKnights, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bKnights, try sqr.Square.fromIndex(target));
+            },
+            Pieces.b => {
+                bit.PopBit(&self.bBishops, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bBishops, try sqr.Square.fromIndex(target));
+            },
+            Pieces.r => {
+                bit.PopBit(&self.bRooks, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bRooks, try sqr.Square.fromIndex(target));
+            },
+            Pieces.q => {
+                bit.PopBit(&self.bQueens, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bQueens, try sqr.Square.fromIndex(target));
+            },
+            Pieces.k => {
+                bit.PopBit(&self.bKing, try sqr.Square.fromIndex(source));
+                bit.SetBit(&self.bKing, try sqr.Square.fromIndex(target));
+            },
+        }
+
+        if (side == 0) {
+            bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.bKnights, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.bBishops, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.bRooks, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.bQueens, try sqr.Square.fromIndex(target));
+        } else {
+            bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.wKnights, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.wBishops, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.wRooks, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.wQueens, try sqr.Square.fromIndex(target));
         }
     }
 };

@@ -15,7 +15,11 @@ pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
     bitBoard.* &= ~(@as(u64, 1) << @as(u6, square.toIndex()));
 }
 
-pub fn BitCount(bitboard: u128) u7 {
+pub fn PopLSB(bitBoard: *u64) void {
+    bitBoard.* &= (bitBoard.* - 1);
+}
+
+pub inline fn BitCount(bitboard: u128) u7 {
     var count: u6 = 0;
     var board = bitboard;
 
@@ -27,7 +31,7 @@ pub fn BitCount(bitboard: u128) u7 {
     return count;
 }
 
-pub fn LeastSignificantBit(bitboard: u64) u7 {
+pub inline fn LeastSignificantBit(bitboard: u64) u7 {
     if (bitboard == 0) return 64;
     return (@ctz(bitboard));
 }

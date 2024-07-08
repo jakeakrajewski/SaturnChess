@@ -3,7 +3,7 @@ const map = @import("Maps/Maps.zig");
 const bit = @import("BitManipulation/BitManipulation.zig");
 const sqr = @import("Board/Square.zig");
 const rand = @import("Random/Rand.zig");
-const board = @import("Board/Board.zig");
+const brd = @import("Board/Board.zig");
 const fen = @import("Testing/FenStrings.zig");
 const mv = @import("Moves/Moves.zig");
 const perft = @import("Perft/Perft.zig");
@@ -13,32 +13,34 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    // const depth: u8 = 6;
-    // const side: u1 = 0;
-    // const position: []const u8 = "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1";
-    // try RunPerft(position, depth);
-    // try printMoves(position, side);
-    TestCastlingRights();
+    const depth: u8 = 6;
+    const side: u1 = 0;
+    const position: []const u8 = fen.start_position;
+    try RunPerft(position, depth);
+    try printMoves(position, side);
+    // TestCastlingRights();
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
     // CheckPin();
 }
 pub fn CheckPin(position: []const u8, side: u1) void {
-    var brd: board.Board = undefined;
-    board.setBoardFromFEN(position, &brd);
-    bit.Print(brd.allPieces());
-    bit.Print(mv.GetPinMask(brd, side));
-    bit.Print(mv.GetCheckMask(brd, side));
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(position, &board);
+    bit.Print(board.allPieces());
+    bit.Print(mv.GetPinMask(board, side));
+    bit.Print(mv.GetCheckMask(board, side));
 }
 
 pub fn RunPerft(position: []const u8, depth: u8) !void {
-    var brd: board.Board = undefined;
-    board.setBoardFromFEN(position, &brd);
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(position, &board);
     const startTime = std.time.milliTimestamp();
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
-    const pos = try perft.Perft(&brd, depth, depth, brd.sideToMove, allocator);
+    var moves = std.ArrayList(mv.Move).init(allocator);
+    defer moves.deinit();
+    const pos = try perft.Perft(&board, moves, depth, depth, board.sideToMove, allocator);
     const endTime = std.time.milliTimestamp();
     const diff: u64 = @intCast(endTime - startTime);
     std.debug.print("\nMoves: {}", .{pos.Nodes});
@@ -50,14 +52,14 @@ pub fn RunPerft(position: []const u8, depth: u8) !void {
 }
 
 pub fn printMoves(position: []const u8, side: u1) !void {
-    var brd = board.emptyBoard();
-    board.setBoardFromFEN(position, &brd);
+    var board = brd.emptyBoard();
+    brd.setBoardFromFEN(position, &board);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
 
-    try mv.GenerateMoves(&list, &brd, side);
+    try mv.GenerateMoves(&list, &board, side);
 
     std.debug.print("Total Moves: {d}\n\n", .{list.items.len});
     for (0..list.items.len) |index| {
@@ -79,76 +81,76 @@ pub fn printMoves(position: []const u8, side: u1) !void {
 }
 
 pub fn makeMoves() !void {
-    var brd = board.emptyBoard();
-    board.setBoardFromFEN(fen.doubleEnPassant, &brd);
+    var board = brd.emptyBoard();
+    brd.setBoardFromFEN(fen.doubleEnPassant, &board);
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
-    try mv.GenerateMoves(&list, &brd, 0);
-    var brdCopy = brd;
-    std.debug.print("Castle Rights: {d}", .{brdCopy.castle});
-    bit.Print(brdCopy.allPieces());
+    try mv.GenerateMoves(&list, &board, 0);
+    var boardCopy = brd;
+    std.debug.print("Castle Rights: {d}", .{boardCopy.castle});
+    bit.Print(boardCopy.allPieces());
     const move = list.items[1];
     var start = try sqr.Square.fromIndex(move.source);
     var end = try sqr.Square.fromIndex(move.target);
     std.debug.print("{s} {s}", .{ start.toString(), end.toString() });
-    const result = mv.MakeMove(move, &brdCopy, 0);
+    const result = mv.MakeMove(move, &boardCopy, 0);
     if (result) {
-        bit.Print(brdCopy.allPieces());
-        std.debug.print("Castle Rights: {d}", .{brdCopy.castle});
+        bit.Print(boardCopy.allPieces());
+        std.debug.print("Castle Rights: {d}", .{boardCopy.castle});
     } else {
         std.debug.print("king in check", .{});
     }
 }
 
 pub fn printTestBoards() void {
-    var bitbrd: board.Board = board.emptyBoard();
-    bit.Print(bitbrd.wKing);
-    board.setBoardFromFEN(fen.doubleEnPassant, &bitbrd);
+    var bitboard: brd.Board = brd.emptyBoard();
+    bit.Print(bitboard.wKing);
+    brd.setBoardFromFEN(fen.doubleEnPassant, &bitboard);
 
     std.debug.print("\nWhite Pawns: \n", .{});
-    bit.Print(bitbrd.wPawns);
+    bit.Print(bitboard.wPawns);
     std.debug.print("\nWhite Knights: \n", .{});
-    bit.Print(bitbrd.wKnights);
+    bit.Print(bitboard.wKnights);
     std.debug.print("\nWhite Bishops: \n", .{});
-    bit.Print(bitbrd.wBishops);
+    bit.Print(bitboard.wBishops);
     std.debug.print("\nWhite Rooks: \n", .{});
-    bit.Print(bitbrd.wRooks);
+    bit.Print(bitboard.wRooks);
     std.debug.print("\nWhite Queens: \n", .{});
-    bit.Print(bitbrd.wQueens);
+    bit.Print(bitboard.wQueens);
     std.debug.print("\nWhite Kings: \n", .{});
-    bit.Print(bitbrd.wKing);
+    bit.Print(bitboard.wKing);
     std.debug.print("\nWhite Pieces: \n", .{});
-    bit.Print(bitbrd.wPieces());
+    bit.Print(bitboard.wPieces());
     std.debug.print("\nBlack Pawns: \n", .{});
-    bit.Print(bitbrd.bPawns);
+    bit.Print(bitboard.bPawns);
     std.debug.print("\nBlack Knights: \n", .{});
-    bit.Print(bitbrd.bKnights);
+    bit.Print(bitboard.bKnights);
     std.debug.print("\nBlack Bishops: \n", .{});
-    bit.Print(bitbrd.bBishops);
+    bit.Print(bitboard.bBishops);
     std.debug.print("\nBlack Rooks: \n", .{});
-    bit.Print(bitbrd.bRooks);
+    bit.Print(bitboard.bRooks);
     std.debug.print("\nBlack Queens: \n", .{});
-    bit.Print(bitbrd.bQueens);
+    bit.Print(bitboard.bQueens);
     std.debug.print("\nBlack Kings: \n", .{});
-    bit.Print(bitbrd.bKing);
+    bit.Print(bitboard.bKing);
     std.debug.print("\nBlack Pieces: \n", .{});
-    bit.Print(bitbrd.bPieces());
+    bit.Print(bitboard.bPieces());
     std.debug.print("\nAll Pieces: \n", .{});
-    bit.Print(bitbrd.allPieces());
+    bit.Print(bitboard.allPieces());
     std.debug.print("\nEn Passant Square: \n", .{});
-    bit.Print(bitbrd.enPassantSquare);
+    bit.Print(bitboard.enPassantSquare);
 
-    std.debug.print("\nCastling Rights: {d} \n", .{bitbrd.castle});
+    std.debug.print("\nCastling Rights: {d} \n", .{bitboard.castle});
 
     const s = sqr.Square.toIndex(.D3);
-    const attacked = bitbrd.isSquareAttacked(s, 1);
+    const attacked = bitboard.isSquareAttacked(s, 1);
     std.debug.print("Square attacked: {}", .{attacked});
 }
 pub fn TestCastlingRights() void {
-    var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.castleTest, &brd);
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.castleTest, &board);
     const bqr = sqr.Square.toIndex(.A8);
     const a7 = sqr.Square.toIndex(.A7);
     const bkr = sqr.Square.toIndex(.H8);
@@ -157,42 +159,42 @@ pub fn TestCastlingRights() void {
     // const a2 = sqr.Square.toIndex(.A2);
     const wqr = sqr.Square.toIndex(.A1);
     const h2 = sqr.Square.toIndex(.H2);
-    std.debug.print("{} \n", .{brd.castle});
+    std.debug.print("{} \n", .{board.castle});
 
     // White King Side Rook Move
     const whiteKingRook: mv.Move = mv.Move{ .source = wkr, .target = h2, .piece = board.Pieces.R };
-    var result = mv.MakeMove(whiteKingRook, &brd, 0);
-    if (result) bit.Print(brd.allPieces());
-    std.debug.print("\n White King Rook Move: {} \n", .{brd.castle});
-    board.setBoardFromFEN(fen.castleTest, &brd);
+    var result = mv.MakeMove(whiteKingRook, &board, 0);
+    if (result) bit.Print(board.allPieces());
+    std.debug.print("\n White King Rook Move: {} \n", .{board.castle});
+    brd.setBoardFromFEN(fen.castleTest, &board);
 
     // White Queen Side Rook Move
     const whiteQueenRook: mv.Move = mv.Move{ .source = wqr, .target = bqr, .piece = board.Pieces.R };
-    result = mv.MakeMove(whiteQueenRook, &brd, 0);
-    bit.Print(brd.allPieces());
-    std.debug.print("\n White Queen Rook Move: {} \n", .{brd.castle});
-    board.setBoardFromFEN(fen.castleTest, &brd);
+    result = mv.MakeMove(whiteQueenRook, &board, 0);
+    bit.Print(board.allPieces());
+    std.debug.print("\n White Queen Rook Move: {} \n", .{board.castle});
+    brd.setBoardFromFEN(fen.castleTest, &board);
 
     // White King Side Rook Move
     const blackKingRook: mv.Move = mv.Move{ .source = bkr, .target = h7, .piece = board.Pieces.r };
-    result = mv.MakeMove(blackKingRook, &brd, 1);
-    bit.Print(brd.allPieces());
-    std.debug.print("\n Black King Rook Move: {} \n", .{brd.castle});
-    board.setBoardFromFEN(fen.castleTest, &brd);
+    result = mv.MakeMove(blackKingRook, &board, 1);
+    bit.Print(board.allPieces());
+    std.debug.print("\n Black King Rook Move: {} \n", .{board.castle});
+    brd.setBoardFromFEN(fen.castleTest, &board);
 
     // White King Side Rook Move
     const blackQueenRook: mv.Move = mv.Move{ .source = bqr, .target = a7, .piece = board.Pieces.r };
-    result = mv.MakeMove(blackQueenRook, &brd, 1);
-    bit.Print(brd.allPieces());
-    std.debug.print("\n Black Queen Rook Move: {} \n", .{brd.castle});
+    result = mv.MakeMove(blackQueenRook, &board, 1);
+    bit.Print(board.allPieces());
+    std.debug.print("\n Black Queen Rook Move: {} \n", .{board.castle});
 }
 
 pub fn IsKingAttacked() void {
-    var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.checkWithBlocker, &brd);
-    const kingSquare = bit.LeastSignificantBit(brd.wKing);
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.checkWithBlocker, &board);
+    const kingSquare = bit.LeastSignificantBit(board.wKing);
     std.debug.print("King Square: {any}\n", .{sqr.Square.fromIndex(@intCast(kingSquare))});
-    if (brd.isSquareAttacked(@intCast(kingSquare), 0)) {
+    if (board.isSquareAttacked(@intCast(kingSquare), 0)) {
         std.debug.print("true", .{});
     } else {
         std.debug.print("false", .{});
@@ -200,8 +202,8 @@ pub fn IsKingAttacked() void {
 }
 
 pub fn TestAttackTables() void {
-    var brd: board.Board = undefined;
-    board.setBoardFromFEN(fen.checkWithBlocker, &brd);
-    const kingSquare = bit.LeastSignificantBit(brd.wKing);
-    bit.Print(map.GetRookAttacks(@intCast(kingSquare), brd.allPieces()));
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.checkWithBlocker, &board);
+    const kingSquare = bit.LeastSignificantBit(board.wKing);
+    bit.Print(map.GetRookAttacks(@intCast(kingSquare), board.allPieces()));
 }
