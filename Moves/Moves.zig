@@ -810,6 +810,7 @@ pub const Promotion = enum(u3) { X = 0, Q = 1, R = 2, B = 3, N = 4 };
 pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
     const source = if (side == 0) board.GetWhitePieceBitBoard(move.piece) else board.GetBlackPieceBitBoard(move.piece);
     const sourceSquare = try sqr.Square.fromIndex(move.source);
+    const targetSquare = try sqr.Square.fromIndex(move.target);
     const epSquare = bit.LeastSignificantBit(board.enPassantSquare);
     bit.PopBit(&board.enPassantSquare, try sqr.Square.fromIndex(@truncate(epSquare)));
     bit.PopBit(source, try sqr.Square.fromIndex(move.source));
@@ -842,7 +843,6 @@ pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
                 brd.Pieces.r => {
                     if (sourceSquare == .A8) {
                         if (board.castle & 8 > 0) board.castle ^= 8;
-                        board.castle ^= 8;
                     } else if (sourceSquare == .H8) {
                         if (board.castle & 4 > 0) board.castle ^= 4;
                     }
@@ -850,7 +850,24 @@ pub fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
                 else => {},
             }
         }
+
+        switch (targetSquare) {
+            .A8 => {
+                if (board.castle & 8 > 0) board.castle ^= 8;
+            },
+            .H8 => {
+                if (board.castle & 4 > 0) board.castle ^= 4;
+            },
+            .H1 => {
+                if (board.castle & 2 > 0) board.castle ^= 2;
+            },
+            .A1 => {
+                if (board.castle & 1 > 0) board.castle ^= 1;
+            },
+            else => {},
+        }
     }
+
     if (move.castle != .N) {
         switch (move.castle) {
             brd.Castle.WK => {

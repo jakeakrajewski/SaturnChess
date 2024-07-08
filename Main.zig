@@ -13,11 +13,12 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    const depth: u8 = 5;
-    const side: u1 = 0;
-    const position: []const u8 = "r3k2r/Pppp1ppp/1b3nbN/nPP5/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 b kq - 0 1";
-    try RunPerft(position, depth);
-    try printMoves(position, side);
+    // const depth: u8 = 6;
+    // const side: u1 = 0;
+    // const position: []const u8 = "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1";
+    // try RunPerft(position, depth);
+    // try printMoves(position, side);
+    TestCastlingRights();
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
@@ -144,6 +145,46 @@ pub fn printTestBoards() void {
     const s = sqr.Square.toIndex(.D3);
     const attacked = bitbrd.isSquareAttacked(s, 1);
     std.debug.print("Square attacked: {}", .{attacked});
+}
+pub fn TestCastlingRights() void {
+    var brd: board.Board = undefined;
+    board.setBoardFromFEN(fen.castleTest, &brd);
+    const bqr = sqr.Square.toIndex(.A8);
+    const a7 = sqr.Square.toIndex(.A7);
+    const bkr = sqr.Square.toIndex(.H8);
+    const h7 = sqr.Square.toIndex(.H7);
+    const wkr = sqr.Square.toIndex(.H1);
+    // const a2 = sqr.Square.toIndex(.A2);
+    const wqr = sqr.Square.toIndex(.A1);
+    const h2 = sqr.Square.toIndex(.H2);
+    std.debug.print("{} \n", .{brd.castle});
+
+    // White King Side Rook Move
+    const whiteKingRook: mv.Move = mv.Move{ .source = wkr, .target = h2, .piece = board.Pieces.R };
+    var result = mv.MakeMove(whiteKingRook, &brd, 0);
+    if (result) bit.Print(brd.allPieces());
+    std.debug.print("\n White King Rook Move: {} \n", .{brd.castle});
+    board.setBoardFromFEN(fen.castleTest, &brd);
+
+    // White Queen Side Rook Move
+    const whiteQueenRook: mv.Move = mv.Move{ .source = wqr, .target = bqr, .piece = board.Pieces.R };
+    result = mv.MakeMove(whiteQueenRook, &brd, 0);
+    bit.Print(brd.allPieces());
+    std.debug.print("\n White Queen Rook Move: {} \n", .{brd.castle});
+    board.setBoardFromFEN(fen.castleTest, &brd);
+
+    // White King Side Rook Move
+    const blackKingRook: mv.Move = mv.Move{ .source = bkr, .target = h7, .piece = board.Pieces.r };
+    result = mv.MakeMove(blackKingRook, &brd, 1);
+    bit.Print(brd.allPieces());
+    std.debug.print("\n Black King Rook Move: {} \n", .{brd.castle});
+    board.setBoardFromFEN(fen.castleTest, &brd);
+
+    // White King Side Rook Move
+    const blackQueenRook: mv.Move = mv.Move{ .source = bqr, .target = a7, .piece = board.Pieces.r };
+    result = mv.MakeMove(blackQueenRook, &brd, 1);
+    bit.Print(brd.allPieces());
+    std.debug.print("\n Black Queen Rook Move: {} \n", .{brd.castle});
 }
 
 pub fn IsKingAttacked() void {
