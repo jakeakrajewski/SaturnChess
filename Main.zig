@@ -7,22 +7,39 @@ const brd = @import("Board/Board.zig");
 const fen = @import("Testing/FenStrings.zig");
 const mv = @import("Moves/Moves.zig");
 const perft = @import("Perft/Perft.zig");
+const uci = @import("UCI/UCI.zig");
 
 var stdout = std.io.getStdOut().writer();
 var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    const depth: u8 = 6;
-    const side: u1 = 0;
+    // const depth: u8 = 6;
+    // const side: u1 = 0;
     const position: []const u8 = fen.start_position;
-    try RunPerft(position, depth);
-    try printMoves(position, side);
+    // try RunPerft(position, depth);
+    // try printMoves(position, side);
+    ParseMoveTest(position);
     // TestCastlingRights();
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
     // CheckPin();
+}
+pub fn ParseMoveTest(position: []const u8) void {
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(position, &board);
+    bit.Print(board.allPieces());
+    const move = uci.parseMove("b1c3", board);
+    if (move) |m| {
+        var start = try sqr.Square.fromIndex(m.source);
+        var end = try sqr.Square.fromIndex(m.target);
+        std.debug.print("Start Square: {s}\n", .{start.toString()});
+        std.debug.print("End Square: {s}\n", .{end.toString()});
+        std.debug.print("Piece: {}\n", .{m.piece});
+        const result = mv.MakeMove(m, &board, 0);
+        if (result) bit.Print(board.allPieces());
+    }
 }
 pub fn CheckPin(position: []const u8, side: u1) void {
     var board: brd.Board = undefined;
