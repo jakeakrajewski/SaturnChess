@@ -2,6 +2,11 @@ const std = @import("std");
 const mv = @import("../Moves/Moves.zig");
 const brd = @import("../Board/Board.zig");
 const bit = @import("../BitManipulation/BitManipulation.zig");
+const fen = @import("../Testing/FenStrings.zig");
+const perft = @import("../Perft/Perft.zig");
+
+var stdout = std.io.getStdOut().writer();
+var stdin = std.io.getStdIn();
 
 fn charToFile(c: u8) u6 {
     return @intCast(c - 'a');
@@ -25,15 +30,12 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
     const to_file = charToFile(notation[2]);
     const to_rank = charToRank(notation[3]);
 
-    std.debug.print("\n{}{}{}{}\n", .{ from_file, from_rank, to_file, to_rank });
-
     if (from_file >= 8 or from_rank >= 8 or to_file >= 8 or to_rank >= 8) {
         return null;
     }
 
     const from_square = squareFromNotation(from_file, from_rank);
     const to_square = squareFromNotation(to_file, to_rank);
-    std.debug.print("\n{} {}\n", .{ from_square, to_square });
     var promotion: mv.Promotion = .X;
 
     if (notation.len == 5) {
@@ -79,4 +81,111 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
         .promotion = promotion,
         .piece = piece,
     };
+}
+
+pub fn Position(board: *brd.Board, tokens: []const u8) !void {
+    var split = std.mem.split(u8, tokens, " ");
+    const command = split.next().?;
+
+    if (!std.mem.eql(u8, command, "position")) {
+        @panic("Invalid command passed to position.");
+    }
+
+    const command2 = split.next();
+    if (command2 == null) return;
+
+    if (std.mem.eql(u8, command2.?, "startpos")) {
+        brd.setBoardFromFEN(fen.start_position, board);
+
+        var stillMoves = true;
+
+        const command3 = split.next();
+        if (command3 == null) return;
+        if (std.mem.eql(u8, command3.?, "moves")) {
+            while (stillMoves) {
+                const move = split.next();
+                if (move) |m| {
+                    const parsedMove = parseMove(m, board.*);
+                    if (parsedMove) |pm| {
+                        const result = mv.MakeMove(pm, board, board.sideToMove);
+                        if (!result) {
+                            @panic("Invalid move received in position command");
+                        }
+                    }
+                } else {
+                    stillMoves = false;
+                }
+            }
+        }
+    } else if (std.mem.eql(u8, command2.?, "fen")) {
+        const pos = split.next().?;
+        const side = split.next().?;
+        const castles = split.next().?;
+        const ep = split.next().?;
+        const majorClock = split.next().?;
+        const minorClock = split.next().?;
+        const fenLength: usize = pos.len + side.len + castles.len + ep.len + majorClock.len + minorClock.len + 6;
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        var allocator = arena.allocator();
+        const buffer = try allocator.alloc(u8, fenLength);
+
+        const fenString = try std.fmt.bufPrint(buffer, "{s} {s} {s} {s} {s} {s}", .{ pos, side, castles, ep, majorClock, minorClock });
+        brd.setBoardFromFEN(fenString, board);
+
+        var stillMoves = true;
+
+        const command3 = split.next();
+        if (command3 == null) return;
+        if (std.mem.eql(u8, command3.?, "moves")) {
+            while (stillMoves) {
+                const move = split.next();
+                if (move) |m| {
+                    const parsedMove = parseMove(m, board.*);
+                    if (parsedMove) |pm| {
+                        const result = mv.MakeMove(pm, board, board.sideToMove);
+                        if (!result) {
+                            @panic("Invalid move received in position command");
+                        }
+                    }
+                } else {
+                    stillMoves = false;
+                }
+            }
+        }
+    }
+}
+
+pub fn Go(board: *brd.Board, tokens: []const u8) !void {
+    var split = std.mem.split(u8, tokens, " ");
+    const command = split.first();
+
+    if (!std.mem.eql(u8, command, "go")) {
+        @panic("Invalid command passed to go.");
+    }
+
+    const command2 = split.next();
+    if (command2 == null) return;
+
+    if (std.mem.eql(u8, command2.?, "perft")) {
+        const depth = split.next();
+        if (depth) |d| {
+            const depthInt = try std.fmt.parseInt(u8, d, 10);
+            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            const allocator = arena.allocator();
+            var list = std.ArrayList(mv.Move).init(allocator);
+            defer list.deinit();
+            const startTime = std.time.milliTimestamp();
+            const pos = try perft.Perft(board, list, depthInt, depthInt, board.sideToMove, allocator);
+            const endTime = std.time.milliTimestamp();
+            const diff: u64 = @intCast(endTime - startTime);
+            try stdout.print("\nMoves: {}", .{pos.Nodes});
+            try stdout.print("\nCaptures: {}", .{pos.Captures});
+            try stdout.print("\nEnPassant: {}", .{pos.EnPassant});
+            try stdout.print("\nPromotions: {}", .{pos.Promotions});
+            try stdout.print("\nCastles: {}", .{pos.Castles});
+            try stdout.print("\nElapsed Time: {} ms", .{diff});
+            try stdout.print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
+            try stdout.print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
+        }
+    }
 }

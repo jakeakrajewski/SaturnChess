@@ -312,7 +312,9 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
             'k' => board.castle |= @intFromEnum(Castle.BK),
             'q' => board.castle |= @intFromEnum(Castle.BQ),
             '-' => {},
-            else => @panic("Invalid castling character"),
+            else => {
+                @panic("Invalid castling character");
+            },
         }
     }
 

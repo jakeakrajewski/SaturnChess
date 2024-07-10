@@ -636,6 +636,6 @@ pub inline fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
     if (board.isSquareAttacked(@intCast(kingSquare), side) > 0) {
         return false;
     }
-
+    board.sideToMove = ~side;
     return true;
 }

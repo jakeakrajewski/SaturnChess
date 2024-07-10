@@ -14,33 +14,66 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
+    try stdout.print("id name Saturn\n", .{});
+    try stdout.print("id name Jake Krajewski\n", .{});
+    try stdout.print("uciok\n", .{});
+    const allocator = std.heap.page_allocator;
+
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.start_position, &board);
+    var buffer = try allocator.alloc(u8, 1024);
+
+    defer allocator.free(buffer);
+
+    while (true) {
+        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
+
+        if (input_len) |l| {
+            const input = buffer[0..l.len];
+
+            if (std.mem.eql(u8, input, "quit")) {
+                break;
+            }
+
+            var split = std.mem.split(u8, input, " ");
+            const command = split.first();
+
+            if (std.mem.eql(u8, command, "go")) {
+                try uci.Go(&board, input);
+            } else if (std.mem.eql(u8, command, "position")) {
+                try uci.Position(&board, input);
+            } else if (std.mem.eql(u8, input, "isready")) {
+                try stdout.print("readyok\n", .{});
+            } else if (std.mem.eql(u8, input, "ucinewgame")) {
+                try uci.Position(&board, "position startpos");
+            } else if (std.mem.eql(u8, input, "uci")) {
+                try stdout.print("id name Saturn\n", .{});
+                try stdout.print("id name Jake Krajewski\n", .{});
+                try stdout.print("uciok\n", .{});
+            }
+        }
+    }
+
     // const depth: u8 = 6;
     // const side: u1 = 0;
-    const position: []const u8 = fen.start_position;
+    // const position: []const u8 = fen.start_position;
     // try RunPerft(position, depth);
     // try printMoves(position, side);
-    ParseMoveTest(position);
+    // try UCITest(position);
     // TestCastlingRights();
     // printTestBoards();
     // IsKingAttacked();
     // TestAttackTables();
     // CheckPin();
 }
-pub fn ParseMoveTest(position: []const u8) void {
+pub fn UCITest(position: []const u8) !void {
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(position, &board);
     bit.Print(board.allPieces());
-    const move = uci.parseMove("b1c3", board);
-    if (move) |m| {
-        var start = try sqr.Square.fromIndex(m.source);
-        var end = try sqr.Square.fromIndex(m.target);
-        std.debug.print("Start Square: {s}\n", .{start.toString()});
-        std.debug.print("End Square: {s}\n", .{end.toString()});
-        std.debug.print("Piece: {}\n", .{m.piece});
-        const result = mv.MakeMove(m, &board, 0);
-        if (result) bit.Print(board.allPieces());
-    }
+    try uci.Go(&board, "go perft 6");
+    bit.Print(board.allPieces());
 }
+
 pub fn CheckPin(position: []const u8, side: u1) void {
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(position, &board);
