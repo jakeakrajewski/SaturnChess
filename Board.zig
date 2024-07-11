@@ -1,7 +1,7 @@
-const map = @import("../Maps/Maps.zig");
+const map = @import("Maps.zig");
 const std = @import("std");
-const sqr = @import("./Square.zig");
-const bit = @import("../BitManipulation/BitManipulation.zig");
+const sqr = @import("Square.zig");
+const bit = @import("BitManipulation.zig");
 
 pub const Color = enum { WHITE, BLACK };
 pub const Castle = enum(u4) { N = 0, WK = 1, WQ = 2, BK = 4, BQ = 8 };
@@ -225,6 +225,10 @@ pub const Board = struct {
             bit.PopBit(&self.wRooks, try sqr.Square.fromIndex(target));
             bit.PopBit(&self.wQueens, try sqr.Square.fromIndex(target));
         }
+    }
+
+    pub fn GenerateBoardArray(self: *Board) [12]u64 {
+        return [12]u64{ self.wPawns, self.wKnights, self.wBishops, self.wRooks, self.wQueens, self.wKing, self.bPawns, self.bKnights, self.bBishops, self.bRooks, self.bQueens, self.bKing };
     }
 };
 

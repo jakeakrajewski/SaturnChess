@@ -1,9 +1,9 @@
 const std = @import("std");
-const fen = @import("../Testing/FenStrings.zig");
-const brd = @import("../Board/Board.zig");
-const move = @import("../Moves/Moves.zig");
-const bit = @import("../BitManipulation/BitManipulation.zig");
-const sqr = @import("../Board/Square.zig");
+const fen = @import("FenStrings.zig");
+const brd = @import("Board.zig");
+const move = @import("Moves.zig");
+const bit = @import("BitManipulation.zig");
+const sqr = @import("Square.zig");
 
 const Allocator = std.mem.Allocator;
 

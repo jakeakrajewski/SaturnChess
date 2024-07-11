@@ -1,5 +1,5 @@
 const std = @import("std");
-const sqr = @import("../Board/Square.zig");
+const sqr = @import("Square.zig");
 
 var stdout = std.io.getStdOut().writer();
 

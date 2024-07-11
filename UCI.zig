@@ -1,12 +1,54 @@
 const std = @import("std");
-const mv = @import("../Moves/Moves.zig");
-const brd = @import("../Board/Board.zig");
-const bit = @import("../BitManipulation/BitManipulation.zig");
-const fen = @import("../Testing/FenStrings.zig");
-const perft = @import("../Perft/Perft.zig");
+const mv = @import("Moves.zig");
+const brd = @import("Board.zig");
+const bit = @import("BitManipulation.zig");
+const fen = @import("FenStrings.zig");
+const perft = @import("Perft.zig");
 
 var stdout = std.io.getStdOut().writer();
 var stdin = std.io.getStdIn();
+
+pub fn UCILoop() !void {
+    try stdout.print("id name Saturn\n", .{});
+    try stdout.print("id name Jake Krajewski\n", .{});
+    try stdout.print("uciok\n", .{});
+    const allocator = std.heap.page_allocator;
+
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.start_position, &board);
+    var buffer = try allocator.alloc(u8, 1024);
+
+    defer allocator.free(buffer);
+
+    while (true) {
+        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
+
+        if (input_len) |l| {
+            const input = buffer[0..l.len];
+
+            if (std.mem.eql(u8, input, "quit")) {
+                break;
+            }
+
+            var split = std.mem.split(u8, input, " ");
+            const command = split.first();
+
+            if (std.mem.eql(u8, command, "go")) {
+                try Go(&board, input);
+            } else if (std.mem.eql(u8, command, "position")) {
+                try Position(&board, input);
+            } else if (std.mem.eql(u8, input, "isready")) {
+                try stdout.print("readyok\n", .{});
+            } else if (std.mem.eql(u8, input, "ucinewgame")) {
+                try Position(&board, "position startpos");
+            } else if (std.mem.eql(u8, input, "uci")) {
+                try stdout.print("id name Saturn\n", .{});
+                try stdout.print("id name Jake Krajewski\n", .{});
+                try stdout.print("uciok\n", .{});
+            }
+        }
+    }
+}
 
 fn charToFile(c: u8) u6 {
     return @intCast(c - 'a');

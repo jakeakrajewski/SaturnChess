@@ -1,58 +1,28 @@
 const std = @import("std");
-const map = @import("Maps/Maps.zig");
-const bit = @import("BitManipulation/BitManipulation.zig");
-const sqr = @import("Board/Square.zig");
-const rand = @import("Random/Rand.zig");
-const brd = @import("Board/Board.zig");
-const fen = @import("Testing/FenStrings.zig");
-const mv = @import("Moves/Moves.zig");
-const perft = @import("Perft/Perft.zig");
-const uci = @import("UCI/UCI.zig");
+const map = @import("Maps.zig");
+const bit = @import("BitManipulation.zig");
+const sqr = @import("Square.zig");
+const rand = @import("Rand.zig");
+const brd = @import("Board.zig");
+const fen = @import("FenStrings.zig");
+const mv = @import("Moves.zig");
+const perft = @import("Perft.zig");
+const uci = @import("UCI.zig");
+const eval = @import("Evaluate.zig");
 
 var stdout = std.io.getStdOut().writer();
 var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    try stdout.print("id name Saturn\n", .{});
-    try stdout.print("id name Jake Krajewski\n", .{});
-    try stdout.print("uciok\n", .{});
-    const allocator = std.heap.page_allocator;
+    // try uci.UCILoop();
 
     var board: brd.Board = undefined;
-    brd.setBoardFromFEN(fen.start_position, &board);
-    var buffer = try allocator.alloc(u8, 1024);
-
-    defer allocator.free(buffer);
-
-    while (true) {
-        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
-
-        if (input_len) |l| {
-            const input = buffer[0..l.len];
-
-            if (std.mem.eql(u8, input, "quit")) {
-                break;
-            }
-
-            var split = std.mem.split(u8, input, " ");
-            const command = split.first();
-
-            if (std.mem.eql(u8, command, "go")) {
-                try uci.Go(&board, input);
-            } else if (std.mem.eql(u8, command, "position")) {
-                try uci.Position(&board, input);
-            } else if (std.mem.eql(u8, input, "isready")) {
-                try stdout.print("readyok\n", .{});
-            } else if (std.mem.eql(u8, input, "ucinewgame")) {
-                try uci.Position(&board, "position startpos");
-            } else if (std.mem.eql(u8, input, "uci")) {
-                try stdout.print("id name Saturn\n", .{});
-                try stdout.print("id name Jake Krajewski\n", .{});
-                try stdout.print("uciok\n", .{});
-            }
-        }
-    }
+    brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &board);
+    var score: i64 = 0;
+    score = eval.Evaluate(board);
+    bit.Print(board.allPieces());
+    std.debug.print("Eval: {}", .{score});
 
     // const depth: u8 = 6;
     // const side: u1 = 0;
@@ -66,6 +36,7 @@ pub fn main() !void {
     // TestAttackTables();
     // CheckPin();
 }
+
 pub fn UCITest(position: []const u8) !void {
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(position, &board);

@@ -1,8 +1,8 @@
 const std = @import("std");
-const brd = @import("../Board/Board.zig");
-const map = @import("../Maps/Maps.zig");
-const bit = @import("../BitManipulation/BitManipulation.zig");
-const sqr = @import("../Board/Square.zig");
+const brd = @import("Board.zig");
+const map = @import("Maps.zig");
+const bit = @import("BitManipulation.zig");
+const sqr = @import("Square.zig");
 
 pub inline fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side: u1) !void {
     const kingBoard = if (side == 0) board.wKing else board.bKing;

@@ -1,7 +1,7 @@
 const std = @import("std");
-const map = @import("../Maps/Maps.zig");
-const sqr = @import("../Board/Square.zig");
-const bit = @import("../BitManipulation/BitManipulation.zig");
+const map = @import("Maps.zig");
+const sqr = @import("Square.zig");
+const bit = @import("BitManipulation.zig");
 
 const stdout = std.io.getStdOut().writer();
 

@@ -1,6 +1,6 @@
 const std = @import("std");
-const bit = @import("../BitManipulation/BitManipulation.zig");
-const sqr = @import("../Board/Square.zig");
+const bit = @import("BitManipulation.zig");
+const sqr = @import("Square.zig");
 
 const Square = sqr.Square;
 
