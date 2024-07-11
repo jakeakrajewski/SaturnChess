@@ -1,9 +1,11 @@
 const std = @import("std");
+const sqr = @import("Square.zig");
 const mv = @import("Moves.zig");
 const brd = @import("Board.zig");
 const bit = @import("BitManipulation.zig");
 const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
+const search = @import("Search.zig");
 
 var stdout = std.io.getStdOut().writer();
 var stdin = std.io.getStdIn();
@@ -228,6 +230,43 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             try stdout.print("\nElapsed Time: {} ms", .{diff});
             try stdout.print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
             try stdout.print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
+        }
+    } else if (std.mem.eql(u8, command2.?, "depth")) {
+        const depth = split.next();
+        if (depth) |d| {
+            const depthInt = try std.fmt.parseInt(u8, d, 10);
+            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            const allocator = arena.allocator();
+            var list = std.ArrayList(mv.Move).init(allocator);
+            defer list.deinit();
+            const bestMove = try search.Search(board, list, depthInt);
+            const start = try sqr.Square.fromIndex(bestMove.source);
+            const target = try sqr.Square.fromIndex(bestMove.target);
+            var promo: u8 = undefined;
+            if (bestMove.promotion != .X) {
+                switch (bestMove.promotion) {
+                    .N => {
+                        promo = if (board.sideToMove == 0) 'N' else 'n';
+                    },
+                    .B => {
+                        promo = if (board.sideToMove == 0) 'B' else 'b';
+                    },
+                    .R => {
+                        promo = if (board.sideToMove == 0) 'R' else 'r';
+                    },
+                    .Q => {
+                        promo = if (board.sideToMove == 0) 'Q' else 'q';
+                    },
+                    else => {
+                        promo = 0;
+                    },
+                }
+            }
+            if (promo == 0) {
+                try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
+            } else {
+                try stdout.print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+            }
         }
     }
 }

@@ -15,14 +15,14 @@ var stdin = std.io.getStdIn().reader();
 
 pub fn main() !void {
     try map.InitializeAttackTables();
-    // try uci.UCILoop();
+    try UCILoop();
 
-    var board: brd.Board = undefined;
-    brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &board);
-    var score: i64 = 0;
-    score = eval.Evaluate(board);
-    bit.Print(board.allPieces());
-    std.debug.print("Eval: {}", .{score});
+    // var board: brd.Board = undefined;
+    // brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &board);
+    // var score: i64 = 0;
+    // score = eval.Evaluate(board);
+    // bit.Print(board.allPieces());
+    // std.debug.print("Eval: {}", .{score});
 
     // const depth: u8 = 6;
     // const side: u1 = 0;
@@ -35,6 +35,48 @@ pub fn main() !void {
     // IsKingAttacked();
     // TestAttackTables();
     // CheckPin();
+}
+
+pub fn UCILoop() !void {
+    try stdout.print("id name Saturn\n", .{});
+    try stdout.print("id name Jake Krajewski\n", .{});
+    try stdout.print("uciok\n", .{});
+    const allocator = std.heap.page_allocator;
+
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.start_position, &board);
+    var buffer = try allocator.alloc(u8, 1024);
+
+    defer allocator.free(buffer);
+
+    while (true) {
+        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
+
+        if (input_len) |l| {
+            const input = buffer[0..l.len];
+
+            if (std.mem.eql(u8, input, "quit")) {
+                break;
+            }
+
+            var split = std.mem.split(u8, input, " ");
+            const command = split.first();
+
+            if (std.mem.eql(u8, command, "go")) {
+                try uci.Go(&board, input);
+            } else if (std.mem.eql(u8, command, "position")) {
+                try uci.Position(&board, input);
+            } else if (std.mem.eql(u8, input, "isready")) {
+                try stdout.print("readyok\n", .{});
+            } else if (std.mem.eql(u8, input, "ucinewgame")) {
+                try uci.Position(&board, "position startpos");
+            } else if (std.mem.eql(u8, input, "uci")) {
+                try stdout.print("id name Saturn\n", .{});
+                try stdout.print("id name Jake Krajewski\n", .{});
+                try stdout.print("uciok\n", .{});
+            }
+        }
+    }
 }
 
 pub fn UCITest(position: []const u8) !void {

@@ -18,12 +18,12 @@ pub inline fn Evaluate(board: brd.Board) i64 {
 pub inline fn MaterialScore(board: brd.Board) i64 {
     var score: i64 = 0;
 
-    score += 100 * @as(i64, (bit.BitCount(board.wPawns) - bit.BitCount(board.bPawns)));
-    score += 300 * @as(i64, (bit.BitCount(board.wKnights) - bit.BitCount(board.bKnights)));
-    score += 300 * @as(i64, (bit.BitCount(board.wBishops) - bit.BitCount(board.bBishops)));
-    score += 500 * @as(i64, (bit.BitCount(board.wRooks) - bit.BitCount(board.bRooks)));
-    score += 900 * @as(i64, (bit.BitCount(board.wQueens) - bit.BitCount(board.bQueens)));
-    score += 10000 * @as(i64, (bit.BitCount(board.wQueens) - bit.BitCount(board.bQueens)));
+    score += 100 * @as(i64, bit.BitCount(board.wPawns)) - bit.BitCount(board.bPawns);
+    score += 300 * @as(i64, bit.BitCount(board.wKnights)) - bit.BitCount(board.bKnights);
+    score += 300 * @as(i64, bit.BitCount(board.wBishops)) - bit.BitCount(board.bBishops);
+    score += 500 * @as(i64, bit.BitCount(board.wRooks)) - bit.BitCount(board.bRooks);
+    score += 900 * @as(i64, bit.BitCount(board.wQueens)) - bit.BitCount(board.bQueens);
+    score += 10000 * @as(i64, bit.BitCount(board.wKing)) - bit.BitCount(board.bKing);
 
     return if (board.sideToMove == 0) score else -score;
 }
