@@ -18,7 +18,7 @@ pub fn main() !void {
     try UCILoop();
 
     // var board: brd.Board = undefined;
-    // brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", &board);
+    // brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", &board);
     // var score: i64 = 0;
     // score = eval.Evaluate(board);
     // bit.Print(board.allPieces());
@@ -72,8 +72,10 @@ pub fn UCILoop() !void {
                 try uci.Position(&board, "position startpos");
             } else if (std.mem.eql(u8, input, "uci")) {
                 try stdout.print("id name Saturn\n", .{});
-                try stdout.print("id name Jake Krajewski\n", .{});
+                try stdout.print("id author Jake Krajewski\n", .{});
                 try stdout.print("uciok\n", .{});
+            } else if (std.mem.eql(u8, input, "print")) {
+                printTestBoards(&board);
             }
         }
     }
@@ -169,11 +171,7 @@ pub fn makeMoves() !void {
     }
 }
 
-pub fn printTestBoards() void {
-    var bitboard: brd.Board = brd.emptyBoard();
-    bit.Print(bitboard.wKing);
-    brd.setBoardFromFEN(fen.doubleEnPassant, &bitboard);
-
+pub fn printTestBoards(bitboard: *brd.Board) void {
     std.debug.print("\nWhite Pawns: \n", .{});
     bit.Print(bitboard.wPawns);
     std.debug.print("\nWhite Knights: \n", .{});

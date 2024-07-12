@@ -119,11 +119,18 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
     if ((board.bQueens & pieceBoard) > 0) piece = .q;
     if ((board.bKing & pieceBoard) > 0) piece = .k;
 
+    var castles: brd.Castle = .N;
+    if (piece == .K and from_square == 60 and to_square == 62) castles = .WK;
+    if (piece == .K and from_square == 60 and to_square == 58) castles = .WQ;
+    if (piece == .k and from_square == 4 and to_square == 6) castles = .BK;
+    if (piece == .k and from_square == 4 and to_square == 2) castles = .BQ;
+
     return mv.Move{
         .source = from_square,
         .target = to_square,
         .promotion = promotion,
         .piece = piece,
+        .castle = castles,
     };
 }
 
@@ -261,12 +268,41 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
                         promo = 0;
                     },
                 }
-            }
-            if (promo == 0) {
-                try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
-            } else {
                 try stdout.print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+            } else {
+                try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
             }
+        }
+    } else if (std.mem.eql(u8, command2.?, "wtime")) {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        const allocator = arena.allocator();
+        var list = std.ArrayList(mv.Move).init(allocator);
+        defer list.deinit();
+        const bestMove = try search.Search(board, list, 4);
+        const start = try sqr.Square.fromIndex(bestMove.source);
+        const target = try sqr.Square.fromIndex(bestMove.target);
+        var promo: u8 = undefined;
+        if (bestMove.promotion != .X) {
+            switch (bestMove.promotion) {
+                .N => {
+                    promo = if (board.sideToMove == 0) 'N' else 'n';
+                },
+                .B => {
+                    promo = if (board.sideToMove == 0) 'B' else 'b';
+                },
+                .R => {
+                    promo = if (board.sideToMove == 0) 'R' else 'r';
+                },
+                .Q => {
+                    promo = if (board.sideToMove == 0) 'Q' else 'q';
+                },
+                else => {
+                    promo = 0;
+                },
+            }
+            try stdout.print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+        } else {
+            try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
         }
     }
 }

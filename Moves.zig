@@ -570,31 +570,31 @@ pub inline fn MakeMove(move: Move, board: *brd.Board, side: u1) bool {
             bit.SetBit(&board.enPassantSquare, try sqr.Square.fromIndex(move.target - 8));
         }
     } else {
-        if (move.isCapture) {
-            if (side == 0) {
-                if (move.isEnPassant) {
-                    bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target + 8));
-                } else {
-                    bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.bKnights, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.bBishops, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.bRooks, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.bQueens, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.bKing, try sqr.Square.fromIndex(move.target));
-                }
+        // if (move.isCapture) {
+        if (side == 0) {
+            if (move.isEnPassant) {
+                bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target + 8));
             } else {
-                if (move.isEnPassant) {
-                    bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target - 8));
-                } else {
-                    bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.wKnights, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.wBishops, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.wRooks, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.wQueens, try sqr.Square.fromIndex(move.target));
-                    bit.PopBit(&board.wKing, try sqr.Square.fromIndex(move.target));
-                }
+                bit.PopBit(&board.bPawns, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.bKnights, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.bBishops, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.bRooks, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.bQueens, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.bKing, try sqr.Square.fromIndex(move.target));
+            }
+        } else {
+            if (move.isEnPassant) {
+                bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target - 8));
+            } else {
+                bit.PopBit(&board.wPawns, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.wKnights, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.wBishops, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.wRooks, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.wQueens, try sqr.Square.fromIndex(move.target));
+                bit.PopBit(&board.wKing, try sqr.Square.fromIndex(move.target));
             }
         }
+        // }
 
         if (move.promotion != .X) {
             if (side == 0) {
