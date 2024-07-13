@@ -9,9 +9,7 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 const eval = @import("Evaluate.zig");
-
-var stdout = std.io.getStdOut().writer();
-var stdin = std.io.getStdIn().reader();
+const builtin = @import("builtin");
 
 pub fn main() !void {
     try map.InitializeAttackTables();
@@ -38,9 +36,9 @@ pub fn main() !void {
 }
 
 pub fn UCILoop() !void {
-    try stdout.print("id name Saturn\n", .{});
-    try stdout.print("id name Jake Krajewski\n", .{});
-    try stdout.print("uciok\n", .{});
+    try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+    try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
+    try std.io.getStdOut().writer().print("uciok\n", .{});
     const allocator = std.heap.page_allocator;
 
     var board: brd.Board = undefined;
@@ -50,10 +48,16 @@ pub fn UCILoop() !void {
     defer allocator.free(buffer);
 
     while (true) {
-        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
+        const input_len = try std.io.getStdIn().reader().readUntilDelimiterOrEof(buffer, '\n');
 
         if (input_len) |l| {
-            const input = buffer[0..l.len];
+            var input: []const u8 = undefined;
+            const target = builtin.target.os.tag;
+            if (target == .windows) {
+                input = buffer[0 .. l.len - 1];
+            } else {
+                input = buffer[0..l.len];
+            }
 
             if (std.mem.eql(u8, input, "quit")) {
                 break;
@@ -67,13 +71,13 @@ pub fn UCILoop() !void {
             } else if (std.mem.eql(u8, command, "position")) {
                 try uci.Position(&board, input);
             } else if (std.mem.eql(u8, input, "isready")) {
-                try stdout.print("readyok\n", .{});
+                try std.io.getStdOut().writer().print("readyok\n", .{});
             } else if (std.mem.eql(u8, input, "ucinewgame")) {
                 try uci.Position(&board, "position startpos");
             } else if (std.mem.eql(u8, input, "uci")) {
-                try stdout.print("id name Saturn\n", .{});
-                try stdout.print("id author Jake Krajewski\n", .{});
-                try stdout.print("uciok\n", .{});
+                try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+                try std.io.getStdOut().writer().print("id author Jake Krajewski\n", .{});
+                try std.io.getStdOut().writer().print("uciok\n", .{});
             } else if (std.mem.eql(u8, input, "print")) {
                 printTestBoards(&board);
             }

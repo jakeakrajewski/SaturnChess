@@ -7,13 +7,10 @@ const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 
-var stdout = std.io.getStdOut().writer();
-var stdin = std.io.getStdIn();
-
 pub fn UCILoop() !void {
-    try stdout.print("id name Saturn\n", .{});
-    try stdout.print("id name Jake Krajewski\n", .{});
-    try stdout.print("uciok\n", .{});
+    try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+    try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
+    try std.io.getStdOut().writer().print("uciok\n", .{});
     const allocator = std.heap.page_allocator;
 
     var board: brd.Board = undefined;
@@ -23,7 +20,7 @@ pub fn UCILoop() !void {
     defer allocator.free(buffer);
 
     while (true) {
-        const input_len = try stdin.readUntilDelimiterOrEof(buffer, '\n');
+        const input_len = try std.io.getStdIn().reader().readUntilDelimiterOrEof(buffer, '\n');
 
         if (input_len) |l| {
             const input = buffer[0..l.len];
@@ -40,13 +37,13 @@ pub fn UCILoop() !void {
             } else if (std.mem.eql(u8, command, "position")) {
                 try Position(&board, input);
             } else if (std.mem.eql(u8, input, "isready")) {
-                try stdout.print("readyok\n", .{});
+                try std.io.getStdOut().writer().print("readyok\n", .{});
             } else if (std.mem.eql(u8, input, "ucinewgame")) {
                 try Position(&board, "position startpos");
             } else if (std.mem.eql(u8, input, "uci")) {
-                try stdout.print("id name Saturn\n", .{});
-                try stdout.print("id name Jake Krajewski\n", .{});
-                try stdout.print("uciok\n", .{});
+                try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+                try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
+                try std.io.getStdOut().writer().print("uciok\n", .{});
             }
         }
     }
@@ -229,14 +226,14 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             const pos = try perft.Perft(board, list, depthInt, depthInt, board.sideToMove, allocator);
             const endTime = std.time.milliTimestamp();
             const diff: u64 = @intCast(endTime - startTime);
-            try stdout.print("\nMoves: {}", .{pos.Nodes});
-            try stdout.print("\nCaptures: {}", .{pos.Captures});
-            try stdout.print("\nEnPassant: {}", .{pos.EnPassant});
-            try stdout.print("\nPromotions: {}", .{pos.Promotions});
-            try stdout.print("\nCastles: {}", .{pos.Castles});
-            try stdout.print("\nElapsed Time: {} ms", .{diff});
-            try stdout.print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
-            try stdout.print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
+            try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
+            try std.io.getStdOut().writer().print("\nCaptures: {}", .{pos.Captures});
+            try std.io.getStdOut().writer().print("\nEnPassant: {}", .{pos.EnPassant});
+            try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
+            try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
+            try std.io.getStdOut().writer().print("\nElapsed Time: {} ms", .{diff});
+            try std.io.getStdOut().writer().print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
+            try std.io.getStdOut().writer().print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
         }
     } else if (std.mem.eql(u8, command2.?, "depth")) {
         const depth = split.next();
@@ -268,9 +265,9 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
                         promo = 0;
                     },
                 }
-                try stdout.print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+                try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
             } else {
-                try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
+                try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
             }
         }
     } else if (std.mem.eql(u8, command2.?, "wtime")) {
@@ -300,9 +297,9 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
                     promo = 0;
                 },
             }
-            try stdout.print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+            try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
         } else {
-            try stdout.print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
+            try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
         }
     }
 }
