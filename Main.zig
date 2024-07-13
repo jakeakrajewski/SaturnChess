@@ -14,25 +14,6 @@ const builtin = @import("builtin");
 pub fn main() !void {
     try map.InitializeAttackTables();
     try UCILoop();
-
-    // var board: brd.Board = undefined;
-    // brd.setBoardFromFEN("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", &board);
-    // var score: i64 = 0;
-    // score = eval.Evaluate(board);
-    // bit.Print(board.allPieces());
-    // std.debug.print("Eval: {}", .{score});
-
-    // const depth: u8 = 6;
-    // const side: u1 = 0;
-    // const position: []const u8 = fen.start_position;
-    // try RunPerft(position, depth);
-    // try printMoves(position, side);
-    // try UCITest(position);
-    // TestCastlingRights();
-    // printTestBoards();
-    // IsKingAttacked();
-    // TestAttackTables();
-    // CheckPin();
 }
 
 pub fn UCILoop() !void {
