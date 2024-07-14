@@ -232,8 +232,8 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
             try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
             try std.io.getStdOut().writer().print("\nElapsed Time: {} ms", .{diff});
-            try std.io.getStdOut().writer().print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
-            try std.io.getStdOut().writer().print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
+            // try std.io.getStdOut().writer().print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
+            // try std.io.getStdOut().writer().print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
         }
     } else if (std.mem.eql(u8, command2.?, "depth")) {
         const depth = split.next();

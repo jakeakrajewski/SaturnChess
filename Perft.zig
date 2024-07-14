@@ -13,10 +13,10 @@ pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, 
 
     var pos: Position = Position{};
 
-    const generateStart = std.time.milliTimestamp();
+    // const generateStart = std.time.milliTimestamp();
     try move.GenerateMoves(&moves, board, side);
-    const generateEnd = std.time.milliTimestamp();
-    pos.GenerationTime = generateEnd - generateStart;
+    // const generateEnd = std.time.milliTimestamp();
+    // pos.GenerationTime = generateEnd - generateStart;
 
     if (depth == 1) {
         pos.Update(moves);
@@ -24,11 +24,11 @@ pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, 
     }
 
     for (0..moves.items.len) |i| {
-        const makeStart = std.time.milliTimestamp();
+        // const makeStart = std.time.milliTimestamp();
         var cBoard = board.*;
         const result = move.MakeMove(moves.items[i], &cBoard, side);
-        const makeEnd = std.time.milliTimestamp();
-        pos.MakeTime += makeEnd - makeStart;
+        // const makeEnd = std.time.milliTimestamp();
+        // pos.MakeTime += makeEnd - makeStart;
         if (result) {
             const newPos = try Perft(&cBoard, list, startDepth, depth - 1, otherSide, allocator);
             pos.Nodes += newPos.Nodes;
@@ -36,8 +36,8 @@ pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, 
             pos.EnPassant += newPos.EnPassant;
             pos.Castles += newPos.Castles;
             pos.Promotions += newPos.Promotions;
-            pos.GenerationTime += newPos.GenerationTime;
-            pos.MakeTime += newPos.MakeTime;
+            // pos.GenerationTime += newPos.GenerationTime;
+            // pos.MakeTime += newPos.MakeTime;
             var start = try sqr.Square.fromIndex(moves.items[i].source);
             var end = try sqr.Square.fromIndex(moves.items[i].target);
             if (depth == startDepth) std.debug.print("\n     {s}{s}: {}", .{ start.toString(), end.toString(), newPos.Nodes });
@@ -61,7 +61,7 @@ pub const Position = struct {
     EnPassant: u64 = 0,
     Castles: u64 = 0,
     Promotions: u64 = 0,
-    GenerationTime: i64 = 0,
+    // GenerationTime: i64 = 0,
     MakeTime: i64 = 0,
 
     pub fn Update(self: *Position, moves: std.ArrayList(move.Move)) void {

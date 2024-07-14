@@ -9,7 +9,11 @@ pub inline fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side:
     const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
     const attackers = board.isSquareAttacked(kingSquare, side);
     const pinMask = GetPinMask(board.*, side);
-    const checkMask = GetCheckMask(board.*, side);
+    var checkMask: u64 = 0;
+
+    if (attackers > 0) {
+        checkMask = GetCheckMask(board.*, side);
+    }
 
     if (attackers > 1) {
         try KingMoves(list, board, side);
@@ -24,13 +28,15 @@ pub inline fn GenerateMoves(list: *std.ArrayList(Move), board: *brd.Board, side:
 
 pub inline fn GetPinMask(board: brd.Board, side: u1) u64 {
     var b = board;
-    var bishops = if (side == 0) board.bBishops else board.wBishops;
-    var rooks = if (side == 0) board.bRooks else board.wRooks;
-    var queens = if (side == 0) board.bQueens else board.wQueens;
     const kingBoard = if (side == 0) board.wKing else board.bKing;
     const pieces = if (side == 0) b.wPieces() else b.bPieces();
     const oPieces = if (side == 0) b.bPieces() else b.wPieces();
     const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
+    const bishopPinMask: u64 = map.GetBishopAttacks(kingSquare, oPieces);
+    const rookPinMask: u64 = map.GetRookAttacks(kingSquare, oPieces);
+    var bishops = (if (side == 0) board.bBishops else board.wBishops) & bishopPinMask;
+    var rooks = (if (side == 0) board.bRooks else board.wRooks) & rookPinMask;
+    var queens = (if (side == 0) board.bQueens else board.wQueens) & (rookPinMask | bishopPinMask);
 
     var bishopMask: u64 = 0;
     var rookMask: u64 = 0;
