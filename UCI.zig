@@ -231,7 +231,7 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             try std.io.getStdOut().writer().print("\nEnPassant: {}", .{pos.EnPassant});
             try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
             try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
-            try std.io.getStdOut().writer().print("\nElapsed Time: {} ms", .{diff});
+            try std.io.getStdOut().writer().print("\nElapsed Time: {} ms \n\n", .{diff});
             // try std.io.getStdOut().writer().print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
             // try std.io.getStdOut().writer().print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
         }

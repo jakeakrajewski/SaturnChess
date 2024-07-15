@@ -7,12 +7,12 @@ pub fn GetBit(bitBoard: u64, square: u6) u64 {
     return (bitBoard & (@as(u64, 1) << square));
 }
 
-pub fn SetBit(bitBoard: *u64, square: sqr.Square) void {
-    bitBoard.* |= (@as(u64, 1) << @as(u6, square.toIndex()));
+pub fn SetBit(bitBoard: *u64, square: u6) void {
+    bitBoard.* |= (@as(u64, 1) << @as(u6, square));
 }
 
-pub fn PopBit(bitBoard: *u64, square: sqr.Square) void {
-    bitBoard.* &= ~(@as(u64, 1) << @as(u6, square.toIndex()));
+pub fn PopBit(bitBoard: *u64, square: u6) void {
+    bitBoard.* &= ~(@as(u64, 1) << @as(u6, square));
 }
 
 pub fn PopLSB(bitBoard: *u64) void {
@@ -36,13 +36,13 @@ pub inline fn LeastSignificantBit(bitboard: u64) u7 {
     return (@ctz(bitboard));
 }
 
-pub fn setOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
+pub fn SetOccupancy(index: usize, relevantBits: u7, attackMask: u64) u64 {
     var blockers: u64 = 0;
     const bitsSet: u7 = relevantBits;
     var mask = attackMask;
     for (0..bitsSet) |i| {
         const square: u6 = @truncate(LeastSignificantBit(mask));
-        PopBit(&mask, try sqr.Square.fromIndex(square));
+        PopBit(&mask, square);
 
         if ((index & (@as(u64, 1) << @intCast(i))) > 0) {
             blockers |= @as(u64, 1) << square;

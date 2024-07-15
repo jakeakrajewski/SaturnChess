@@ -114,7 +114,7 @@ pub fn MaskPawnAttacks(square: u6, side: u1) !u64 {
 
     var attacks: u64 = 0;
 
-    bit.SetBit(&bitboard, try sqr.Square.fromIndex(@intCast(square)));
+    bit.SetBit(&bitboard, square);
 
     if (side == 0) {
         if (((bitboard >> 7) & ~FILE_A) != 0) {
@@ -139,7 +139,7 @@ pub fn MaskKnightAttacks(square: u6) !u64 {
     var bitboard: u64 = 0;
     var attacks: u64 = 0;
 
-    bit.SetBit(&bitboard, try sqr.Square.fromIndex(@intCast(square)));
+    bit.SetBit(&bitboard, square);
     if (((bitboard >> 17) & ~FILE_H) != 0) {
         attacks |= (bitboard >> 17);
     }
@@ -172,7 +172,7 @@ pub fn MaskKingAttacks(square: u6) !u64 {
     var bitboard: u64 = 0;
     var attacks: u64 = 0;
 
-    bit.SetBit(&bitboard, try sqr.Square.fromIndex(@intCast(square)));
+    bit.SetBit(&bitboard, square);
     if ((bitboard >> 8) != 0) {
         attacks |= (bitboard >> 8);
     }
@@ -401,7 +401,7 @@ pub fn initBishopAttacks() void {
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
-            const blockers = bit.setOccupancy(i, bitCount, mask);
+            const blockers = bit.SetOccupancy(i, bitCount, mask);
             const magicIndex = ((@as(u128, blockers) * bishop_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - bishopRelevantBits[square]);
             bishopAttacks[square][@intCast(magicIndex)] = GenerateBishopAttacks(s, blockers);
         }
@@ -417,7 +417,7 @@ pub fn initRookAttacks() void {
         const permutations = @as(u64, 1) << @intCast(bitCount);
 
         for (0..permutations) |i| {
-            const blockers = bit.setOccupancy(i, bitCount, mask);
+            const blockers = bit.SetOccupancy(i, bitCount, mask);
             const magicIndex = ((@as(u128, blockers) * rook_magic_numbers[square]) & 0xffffffffffffffff) >> @intCast(64 - rookRelevantBits[square]);
             rookAttacks[square][@intCast(magicIndex)] = GenerateRookAttacks(s, blockers);
         }

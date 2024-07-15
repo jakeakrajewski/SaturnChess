@@ -3,11 +3,8 @@ const std = @import("std");
 const sqr = @import("Square.zig");
 const bit = @import("BitManipulation.zig");
 
-pub const Color = enum { WHITE, BLACK };
 pub const Castle = enum(u4) { N = 0, WK = 1, WQ = 2, BK = 4, BQ = 8 };
 pub const Pieces = enum(u4) { P = 0, N = 1, B = 2, R = 3, Q = 4, K = 5, p = 6, n = 7, b = 8, r = 9, q = 10, k = 11 };
-pub const AsciiPieces: [12][]const u8 = .{ "P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k" };
-pub const UnicodePieces: [12][]const u8 = .{ "♙", "♘", "♗", "♖", "♕", "♔", "♟︎", "♞", "♝", "♜", "♛", "♚" };
 
 pub fn PieceFromString(piece: u8) Pieces {
     return switch (piece) {
@@ -155,80 +152,94 @@ pub const Board = struct {
     pub inline fn UpdateBoard(self: *Board, piece: Pieces, source: u6, target: u6, side: u1, isEP: bool) void {
         switch (piece) {
             Pieces.P => {
-                bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wPawns, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wPawns, source);
+                bit.SetBit(&self.wPawns, target);
                 if (isEP) {
                     const epSquare: u6 = @truncate(bit.LeastSignificantBit(self.enPassantSquare));
-                    bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(epSquare + 8));
+                    bit.PopBit(&self.bPawns, epSquare + 8);
                 }
             },
             Pieces.N => {
-                bit.PopBit(&self.wKnights, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wKnights, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wKnights, source);
+                bit.SetBit(&self.wKnights, target);
             },
             Pieces.B => {
-                bit.PopBit(&self.wBishops, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wBishops, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wBishops, source);
+                bit.SetBit(&self.wBishops, target);
             },
             Pieces.R => {
-                bit.PopBit(&self.wRooks, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wRooks, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wRooks, source);
+                bit.SetBit(&self.wRooks, target);
             },
             Pieces.Q => {
-                bit.PopBit(&self.wQueens, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wQueens, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wQueens, source);
+                bit.SetBit(&self.wQueens, target);
             },
             Pieces.K => {
-                bit.PopBit(&self.wKing, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.wKing, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.wKing, source);
+                bit.SetBit(&self.wKing, target);
             },
             Pieces.p => {
-                bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bPawns, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bPawns, source);
+                bit.SetBit(&self.bPawns, target);
                 if (isEP) {
                     const epSquare: u6 = @truncate(bit.LeastSignificantBit(self.enPassantSquare));
-                    bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(epSquare - 8));
+                    bit.PopBit(&self.wPawns, epSquare - 8);
                 }
             },
             Pieces.n => {
-                bit.PopBit(&self.bKnights, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bKnights, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bKnights, source);
+                bit.SetBit(&self.bKnights, target);
             },
             Pieces.b => {
-                bit.PopBit(&self.bBishops, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bBishops, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bBishops, source);
+                bit.SetBit(&self.bBishops, target);
             },
             Pieces.r => {
-                bit.PopBit(&self.bRooks, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bRooks, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bRooks, source);
+                bit.SetBit(&self.bRooks, target);
             },
             Pieces.q => {
-                bit.PopBit(&self.bQueens, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bQueens, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bQueens, source);
+                bit.SetBit(&self.bQueens, target);
             },
             Pieces.k => {
-                bit.PopBit(&self.bKing, try sqr.Square.fromIndex(source));
-                bit.SetBit(&self.bKing, try sqr.Square.fromIndex(target));
+                bit.PopBit(&self.bKing, source);
+                bit.SetBit(&self.bKing, target);
             },
         }
 
         if (side == 0) {
-            bit.PopBit(&self.bPawns, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.bKnights, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.bBishops, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.bRooks, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.bQueens, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.bPawns, target);
+            bit.PopBit(&self.bKnights, target);
+            bit.PopBit(&self.bBishops, target);
+            bit.PopBit(&self.bRooks, target);
+            bit.PopBit(&self.bQueens, target);
         } else {
-            bit.PopBit(&self.wPawns, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.wKnights, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.wBishops, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.wRooks, try sqr.Square.fromIndex(target));
-            bit.PopBit(&self.wQueens, try sqr.Square.fromIndex(target));
+            bit.PopBit(&self.wPawns, target);
+            bit.PopBit(&self.wKnights, target);
+            bit.PopBit(&self.wBishops, target);
+            bit.PopBit(&self.wRooks, target);
+            bit.PopBit(&self.wQueens, target);
         }
     }
 
     pub fn GenerateBoardArray(self: *Board) [12]u64 {
         return [12]u64{ self.wPawns, self.wKnights, self.wBishops, self.wRooks, self.wQueens, self.wKing, self.bPawns, self.bKnights, self.bBishops, self.bRooks, self.bQueens, self.bKing };
+    }
+
+    pub fn GetPieceAtSquare(self: *Board, square: u6) ?Pieces {
+        const squareBoard = @as(u64, 1) << square;
+        if (self.allPieces() & squareBoard > 0) {
+            if ((self.wpawns | self.bPawns) & squareBoard > 0) return .P;
+            if ((self.wKnights | self.bKnights) & squareBoard > 0) return .N;
+            if ((self.wBishops | self.bBishops) & squareBoard > 0) return .B;
+            if ((self.wRooks | self.bRooks) & squareBoard > 0) return .R;
+            if ((self.wQueens | self.bQueens) & squareBoard > 0) return .Q;
+            if ((self.wKing | self.bKing) & squareBoard > 0) return .K;
+        } else {
+            return null;
+        }
     }
 };
 
@@ -237,7 +248,6 @@ pub fn emptyBoard() Board {
 }
 
 pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
-    // Clear all bitboards
     board.* = emptyBoard();
 
     var fenParts = std.mem.split(u8, fen, " ");
@@ -246,7 +256,6 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
     const castlingAvailability = fenParts.next().?;
     const enPassantSquareStr = fenParts.next().?;
 
-    // Parse piece placement
     var rank: u64 = 0;
     var file: u64 = 0;
 
@@ -305,10 +314,8 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
         }
     }
 
-    // Parse side to move
     board.sideToMove = if (sideToMoveStr[0] == 'w') 0 else 1;
 
-    // Parse castling availability
     for (castlingAvailability) |c| {
         switch (c) {
             'K' => board.castle |= @intFromEnum(Castle.WK),
@@ -322,7 +329,6 @@ pub fn setBoardFromFEN(fen: []const u8, board: *Board) void {
         }
     }
 
-    // Parse en passant square
     if (enPassantSquareStr[0] != '-') {
         const fileChar = enPassantSquareStr[0];
         const rankChar = enPassantSquareStr[1];

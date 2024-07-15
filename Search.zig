@@ -17,11 +17,11 @@ pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8) !m
         const move = moves.items[m];
         const start = try sqr.Square.fromIndex(move.source);
         const target = try sqr.Square.fromIndex(move.target);
-        const newList = moveList;
+        // const newList = moveList;
         const result = mv.MakeMove(move, &b, b.sideToMove);
         if (!result) continue;
-        const score = -(try NegaMax(&b, newList, depth - 1, -beta, -alpha));
-        std.debug.print("\nMove: {s}{s} Score: {} ", .{ start.toString(), target.toString(), score });
+        const score = -(try NegaMax(&b, moveList, depth - 1, -beta, -alpha));
+        std.debug.print("Move: {s}{s} Score: {}\n ", .{ start.toString(), target.toString(), score });
         if (score > bestScore) {
             bestScore = score;
             bestMove = move;
@@ -58,8 +58,8 @@ fn NegaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
         const move = moves.items[m];
         const result = mv.MakeMove(move, &b, b.sideToMove);
         if (!result) continue;
-        const newList = moveList;
-        score = -(try NegaMax(&b, newList, depth - 1, -beta, -a));
+        // const newList = moveList;
+        score = -(try NegaMax(&b, moveList, depth - 1, -beta, -a));
         if (score > a) a = score;
         if (score >= beta) break;
     }
@@ -82,8 +82,8 @@ fn Quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
         var b = board.*;
         const result = mv.MakeMove(move, &b, b.sideToMove);
         if (!result) continue;
-        const newList = moveList;
-        score = -(try Quiesce(&b, newList, -beta, -a));
+        // const newList = moveList;
+        score = -(try Quiesce(&b, moveList, -beta, -a));
         if (score > a) a = score;
         if (score >= beta) break;
     }

@@ -40,7 +40,7 @@ pub inline fn PieceSquareScore(board: brd.Board) i64 {
         while (pieceBoard > 0) {
             const square = bit.LeastSignificantBit(pieceBoard);
 
-            bit.PopBit(&pieceBoard, try sqr.Square.fromIndex(@intCast(square)));
+            bit.PopBit(&pieceBoard, (@intCast(square)));
 
             switch (i) {
                 0 => {
@@ -182,8 +182,6 @@ const blackRookPSV: [64]i64 = .{
     50, 50, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
 };
-
-
 
 const kingScorePSV: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
