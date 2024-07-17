@@ -90,3 +90,43 @@ fn Quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
 
     return a;
 }
+
+fn ScoreMove(move: mv.Move, board: brd.Board) i32 {
+    var score: i32 = 0;
+
+    if (move.isCapture()) {
+        score += ScoreCapture(move, board);
+    }
+
+    return score;
+}
+
+fn ScoreCapture(move: mv.Move, board: brd.Board) i32 {
+    const pieceValue = GetPieceValue(move.piece);
+    const targetPiece = board.GetPieceAtSquare(move.target);
+
+    if (targetPiece != null) {
+        return GetPieceValue(targetPiece) - pieceValue;
+    }
+}
+
+fn GetPieceValue(piece: brd.Pieces) u32 {
+    switch (piece) {
+        .P, .p => {
+            return 100;
+        },
+        .N, .n => {
+            return 300;
+        },
+        .B, .b => {
+            return 300;
+        },
+        .R, .r => {
+            return 500;
+        },
+        .Q, .q => {
+            return 900;
+        },
+        else => {},
+    }
+}
