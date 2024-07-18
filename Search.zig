@@ -79,14 +79,16 @@ fn NegaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
         if (score > a) {
             if (!move.isCapture) {
                 historyMoves[move.target][@intFromEnum(move.piece)] += depth;
-                pvTable[ply][ply] = move;
-
-                for (ply + 1..pvLength[ply + 1]) |nextPly| {
-                    pvTable[ply][nextPly] = pvTable[ply + 1][nextPly];
-                }
-
-                pvLength[ply] = pvLength[ply + 1];
             }
+            
+						pvTable[ply][ply] = move;
+
+            for (ply + 1..pvLength[ply + 1]) |nextPly| {
+                pvTable[ply][nextPly] = pvTable[ply + 1][nextPly];
+            }
+
+            pvLength[ply] = pvLength[ply + 1];
+            
             a = score;
         }
         if (score >= beta) {
