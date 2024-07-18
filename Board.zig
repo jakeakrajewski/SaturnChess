@@ -231,12 +231,13 @@ pub const Board = struct {
     pub fn GetPieceAtSquare(self: *Board, square: u6) ?Pieces {
         const squareBoard = @as(u64, 1) << square;
         if (self.allPieces() & squareBoard > 0) {
-            if ((self.wpawns | self.bPawns) & squareBoard > 0) return .P;
+            if ((self.wPawns | self.bPawns) & squareBoard > 0) return .P;
             if ((self.wKnights | self.bKnights) & squareBoard > 0) return .N;
             if ((self.wBishops | self.bBishops) & squareBoard > 0) return .B;
             if ((self.wRooks | self.bRooks) & squareBoard > 0) return .R;
             if ((self.wQueens | self.bQueens) & squareBoard > 0) return .Q;
             if ((self.wKing | self.bKing) & squareBoard > 0) return .K;
+            return null;
         } else {
             return null;
         }

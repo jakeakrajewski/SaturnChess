@@ -7,6 +7,8 @@ const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 
+var ply: u16 = 0;
+
 pub fn UCILoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
     try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
@@ -143,6 +145,7 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
     if (command2 == null) return;
 
     if (std.mem.eql(u8, command2.?, "startpos")) {
+        ply = 0;
         brd.setBoardFromFEN(fen.start_position, board);
 
         var stillMoves = true;
@@ -153,6 +156,7 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
             while (stillMoves) {
                 const move = split.next();
                 if (move) |m| {
+                    ply += 1;
                     const parsedMove = parseMove(m, board.*);
                     if (parsedMove) |pm| {
                         const result = mv.MakeMove(pm, board, board.sideToMove);
@@ -166,6 +170,7 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
             }
         }
     } else if (std.mem.eql(u8, command2.?, "fen")) {
+        ply = 0;
         const pos = split.next().?;
         const side = split.next().?;
         const castles = split.next().?;
@@ -188,6 +193,7 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
             while (stillMoves) {
                 const move = split.next();
                 if (move) |m| {
+                    ply += 1;
                     const parsedMove = parseMove(m, board.*);
                     if (parsedMove) |pm| {
                         const result = mv.MakeMove(pm, board, board.sideToMove);
@@ -243,29 +249,32 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             const allocator = arena.allocator();
             var list = std.ArrayList(mv.Move).init(allocator);
             defer list.deinit();
-            const bestMove = try search.Search(board, list, depthInt);
+            const begin = std.time.milliTimestamp();
+            const bestMove = try search.Search(board, list, depthInt, ply);
+            const end = std.time.milliTimestamp();
+            std.debug.print("Elapsed:{} \n", .{end - begin});
             const start = try sqr.Square.fromIndex(bestMove.source);
             const target = try sqr.Square.fromIndex(bestMove.target);
-            var promo: u8 = undefined;
+            var promo: []const u8 = undefined;
             if (bestMove.promotion != .X) {
                 switch (bestMove.promotion) {
                     .N => {
-                        promo = if (board.sideToMove == 0) 'N' else 'n';
+                        promo = "n";
                     },
                     .B => {
-                        promo = if (board.sideToMove == 0) 'B' else 'b';
+                        promo = "b";
                     },
                     .R => {
-                        promo = if (board.sideToMove == 0) 'R' else 'r';
+                        promo = "r";
                     },
                     .Q => {
-                        promo = if (board.sideToMove == 0) 'Q' else 'q';
+                        promo = "q";
                     },
                     else => {
-                        promo = 0;
+                        promo = "";
                     },
                 }
-                try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+                try std.io.getStdOut().writer().print("bestmove {s}{s}{s}\n", .{ start.toString(), target.toString(), promo });
             } else {
                 try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
             }
@@ -275,7 +284,7 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
         const allocator = arena.allocator();
         var list = std.ArrayList(mv.Move).init(allocator);
         defer list.deinit();
-        const bestMove = try search.Search(board, list, 4);
+        const bestMove = try search.Search(board, list, 5, ply);
         const start = try sqr.Square.fromIndex(bestMove.source);
         const target = try sqr.Square.fromIndex(bestMove.target);
         var promo: u8 = undefined;

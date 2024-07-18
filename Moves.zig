@@ -435,6 +435,11 @@ pub const Move = struct {
             (@as(u24, @intFromBool(self.isEnPassant)) << 22) |
             (@as(u24, @intFromEnum(self.castle)) << 23);
     }
+
+    pub fn Equals(self: *Move, other: Move) bool {
+        if (self.source == other.source and self.target == other.target and self.piece == other.piece) return true;
+        return false;
+    }
 };
 
 pub fn fromU24(encoded: u24) Move {
