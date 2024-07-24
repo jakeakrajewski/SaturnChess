@@ -6,8 +6,62 @@ const bit = @import("BitManipulation.zig");
 const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
+const builtin = @import("builtin");
 
-var depth: u8 = 7;
+var depth: u8 = 64;
+var white_time: i64 = 0;
+var black_time: i64 = 0;
+var increment: i64 = 0;
+
+pub fn uciLoop() !void {
+    try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+    try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
+    try std.io.getStdOut().writer().print("uciok\n", .{});
+    const allocator = std.heap.page_allocator;
+
+    var board: brd.Board = undefined;
+    brd.setBoardFromFEN(fen.start_position, &board);
+    var buffer = try allocator.alloc(u8, 1024);
+
+    defer allocator.free(buffer);
+
+    while (true) {
+        const input_len = try std.io.getStdIn().reader().readUntilDelimiterOrEof(buffer, '\n');
+
+        if (input_len) |l| {
+            var input: []const u8 = undefined;
+            const target = builtin.target.os.tag;
+            if (target == .windows) {
+                input = buffer[0 .. l.len - 1];
+            } else {
+                input = buffer[0..l.len];
+            }
+
+            if (std.mem.eql(u8, input, "quit")) {
+                break;
+            }
+
+            var split = std.mem.split(u8, input, " ");
+            const command = split.first();
+
+            if (std.mem.eql(u8, command, "go")) {
+                try go(&board, input);
+            } else if (std.mem.eql(u8, command, "position")) {
+                try position(&board, input);
+            } else if (std.mem.eql(u8, input, "isready")) {
+                try std.io.getStdOut().writer().print("readyok\n", .{});
+            } else if (std.mem.eql(u8, input, "ucinewgame")) {
+                try position(&board, "position startpos");
+            } else if (std.mem.eql(u8, input, "uci")) {
+                try std.io.getStdOut().writer().print("id name Saturn\n", .{});
+                try std.io.getStdOut().writer().print("id author Jake Krajewski\n", .{});
+                try std.io.getStdOut().writer().print("uciok\n", .{});
+            } else if (std.mem.eql(u8, input, "print")) {
+                printTestBoards(&board);
+            }
+        }
+    }
+}
 
 fn charToFile(c: u8) u6 {
     return @intCast(c - 'a');
@@ -208,14 +262,29 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
             depth = try std.fmt.parseInt(u8, d, 10);
         }
     } else if (std.mem.eql(u8, command2.?, "wtime")) {
-        //TODO: Handle time management
+        const white_time_remaining = split.next();
+        if (white_time_remaining) |time| {
+            white_time = try std.fmt.parseInt(i64, time, 10);
+        }
+        const black_time_command = split.next();
+        if (std.mem.eql(u8, black_time_command.?, "btime")) {
+            const black_time_remaining = split.next();
+            if (black_time_remaining) |time| {
+                black_time = try std.fmt.parseInt(i64, time, 10);
+            }
+        }
     }
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
-    const best_move = try search.Search(board, list, depth);
+    const remaining_time = if (board.sideToMove == 0) white_time else black_time;
+    var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 40) + @divTrunc(increment, 2));
+    if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
+    if (remaining_time < 0) time_allowance = 100;
+    std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
+    const best_move = try search.Search(board, list, depth, time_allowance);
     const start = try sqr.Square.FromIndex(best_move.source);
     const target = try sqr.Square.FromIndex(best_move.target);
     var promo: u8 = undefined;
@@ -241,4 +310,45 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     } else {
         try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
     }
+}
+
+pub fn printTestBoards(bitboard: *brd.Board) void {
+    std.debug.print("\nWhite Pawns: \n", .{});
+    bit.print(bitboard.wPawns);
+    std.debug.print("\nWhite Knights: \n", .{});
+    bit.print(bitboard.wKnights);
+    std.debug.print("\nWhite Bishops: \n", .{});
+    bit.print(bitboard.wBishops);
+    std.debug.print("\nWhite Rooks: \n", .{});
+    bit.print(bitboard.wRooks);
+    std.debug.print("\nWhite Queens: \n", .{});
+    bit.print(bitboard.wQueens);
+    std.debug.print("\nWhite Kings: \n", .{});
+    bit.print(bitboard.wKing);
+    std.debug.print("\nWhite Pieces: \n", .{});
+    bit.print(bitboard.wPieces());
+    std.debug.print("\nBlack Pawns: \n", .{});
+    bit.print(bitboard.bPawns);
+    std.debug.print("\nBlack Knights: \n", .{});
+    bit.print(bitboard.bKnights);
+    std.debug.print("\nBlack Bishops: \n", .{});
+    bit.print(bitboard.bBishops);
+    std.debug.print("\nBlack Rooks: \n", .{});
+    bit.print(bitboard.bRooks);
+    std.debug.print("\nBlack Queens: \n", .{});
+    bit.print(bitboard.bQueens);
+    std.debug.print("\nBlack Kings: \n", .{});
+    bit.print(bitboard.bKing);
+    std.debug.print("\nBlack Pieces: \n", .{});
+    bit.print(bitboard.bPieces());
+    std.debug.print("\nAll Pieces: \n", .{});
+    bit.print(bitboard.allPieces());
+    std.debug.print("\nEn Passant Square: \n", .{});
+    bit.print(bitboard.enPassantSquare);
+
+    std.debug.print("\nCastling Rights: {d} \n", .{bitboard.castle});
+
+    const s = sqr.Square.toIndex(.D3);
+    const attacked = bitboard.isSquareAttacked(s, 1);
+    std.debug.print("Square attacked: {}", .{attacked});
 }

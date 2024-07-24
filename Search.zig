@@ -14,11 +14,18 @@ var pv_table: [max_ply][max_ply]mv.Move = undefined;
 var ply: u16 = 0;
 var follow_pv: u1 = 0;
 var score_pv: u1 = 0;
+var search_start_time_stamp: i64 = 0;
+var time_check: u16 = 200;
+var time_allowance: i64 = 0;
+var stop_search = false;
 
-pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8) !mv.Move {
+pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, time: i64) !mv.Move {
     nodes = 0;
     follow_pv = 0;
     score_pv = 0;
+    search_start_time_stamp = std.time.milliTimestamp();
+    time_allowance = time;
+    stop_search = false;
 
     for (&killer_moves) |*plyMoves| {
         @memset(plyMoves, mv.FromU24(0));
@@ -34,6 +41,8 @@ pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8) !m
     const b = board;
     ply = 0;
     for (1..depth + 1) |d| {
+        const current_time = std.time.milliTimestamp();
+        if (current_time - search_start_time_stamp > time_allowance) break;
         follow_pv = 1;
         const score = try negaMax(b, moveList, @intCast(d), -1000000, 1000000);
         try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} pv ", .{ score, d, nodes });
@@ -57,6 +66,14 @@ fn enablePVScoring(moveList: std.ArrayList(mv.Move)) void {
 }
 
 fn negaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha: i64, beta: i64) !i64 {
+    time_check -= 1;
+    if (time_check == 0) {
+        time_check = 200;
+        if (std.time.milliTimestamp() - search_start_time_stamp > time_allowance) {
+            stop_search = true;
+            return eval.evaluate(board.*);
+        }
+    }
     pv_length[ply] = ply;
 
     if (depth == 0) {
@@ -84,6 +101,7 @@ fn negaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
     }
 
     for (0..moves.items.len) |m| {
+        if (stop_search) break;
         nodes += 1;
         ply += 1;
         var b = board.*;
@@ -124,6 +142,14 @@ fn negaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
 }
 
 fn quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta: i64) !i64 {
+    time_check -= 1;
+    if (time_check == 0) {
+        time_check = 200;
+        if (std.time.milliTimestamp() - search_start_time_stamp > time_allowance) {
+            stop_search = true;
+            return eval.evaluate(board.*);
+        }
+    }
     var a = alpha;
     const ev = eval.evaluate(board.*);
     if (ev >= beta) return beta;
@@ -133,6 +159,7 @@ fn quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
     try mv.generateMoves(&moves, board, board.sideToMove);
     if (moves.items.len > 0) try sortMoves(&moves, board);
     for (0..moves.items.len) |m| {
+        if (stop_search) break;
         ply += 1;
         const move = moves.items[m];
         if (!move.isCapture) {
