@@ -5,51 +5,54 @@ const sqr = @import("Square.zig");
 const std = @import("std");
 const eval = @import("Evaluate.zig");
 
-var killerMoves: [128][2]mv.Move = undefined;
+const maxPly = 64;
+var nodes: i64 = 0;
+var killerMoves: [maxPly][2]mv.Move = undefined;
 var historyMoves: [64][12]i32 = undefined;
-var pvLength: [64]i32 = undefined;
-var pvTable: [64][64]mv.Move = undefined;
+var pvLength: [maxPly]i32 = undefined;
+var pvTable: [maxPly][maxPly]mv.Move = undefined;
 var ply: u16 = 0;
+var followPV: u1 = 0;
+var scorePV: u1 = 0;
 
 pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8) !mv.Move {
-    var moves = moveList;
-    ply = 0;
-    var bestMove: mv.Move = undefined;
-    var bestScore: i64 = -1000000;
-    var alpha: i64 = -1000000;
-    const beta: i64 = 1000000;
-    try mv.GenerateMoves(&moves, board, board.sideToMove);
-    if (moves.items.len > 0) sortMoves(&moves, board);
-    for (0..moves.items.len) |m| {
-        var b = board.*;
-        const move = moves.items[m];
-        // const start = try sqr.Square.fromIndex(move.source);
-        // const target = try sqr.Square.fromIndex(move.target);
-        // const newList = moveList;
-        const result = mv.MakeMove(move, &b, b.sideToMove);
-        if (!result) continue;
-        const score = -(try NegaMax(&b, moveList, depth - 1, -beta, -alpha));
-        // std.debug.print("Move: {s}{s} Score: {}\n ", .{ start.toString(), target.toString(), score });
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = move;
-        }
-        if (score > alpha) {
-            alpha = score;
-        }
+    nodes = 0;
+    followPV = 0;
+    scorePV = 0;
+
+    for (&killerMoves) |*plyMoves| {
+        @memset(plyMoves, mv.fromU24(0));
     }
-    if (bestScore == -1000000) {
-        return moves.items[0];
-    } else {
-        const start = try sqr.Square.fromIndex(bestMove.source);
-        const target = try sqr.Square.fromIndex(bestMove.target);
-        std.debug.print("{s}{s} ", .{ start.toString(), target.toString() });
-        for (0..@intCast(pvLength[depth - 1])) |count| {
-            const pvstart = try sqr.Square.fromIndex(pvTable[0][count].source);
-            const pvtarget = try sqr.Square.fromIndex(pvTable[0][count].target);
-            std.debug.print("{s}{s} ", .{ pvstart.toString(), pvtarget.toString() });
+    for (&historyMoves) |*history| {
+        @memset(history, 0);
+    }
+    for (&pvTable) |*pv| {
+        @memset(pv, mv.fromU24(0));
+    }
+    @memset(&pvLength, 0);
+
+    const b = board;
+    ply = 0;
+    for (1..depth + 1) |d| {
+        followPV = 1;
+        const score = try NegaMax(b, moveList, @intCast(d), -1000000, 1000000);
+        try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} pv ", .{ score, d, nodes });
+        for (0..@intCast(pvLength[ply])) |count| {
+            try PrintMove(pvTable[0][count]);
         }
-        return bestMove;
+        try std.io.getStdOut().writer().print("\n", .{});
+    }
+    return pvTable[0][0];
+}
+
+fn EnablePVScoring(moveList: std.ArrayList(mv.Move)) void {
+    followPV = 0;
+
+    for (0..moveList.items.len) |count| {
+        if (pvTable[0][ply].Equals(moveList.items[count])) {
+            scorePV = 1;
+            followPV = 1;
+        }
     }
 }
 
@@ -59,11 +62,17 @@ fn NegaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
     if (depth == 0) {
         return Quiesce(board, moveList, alpha, beta);
     }
+    if (ply > maxPly - 1) {
+        return eval.Evaluate(board.*);
+    }
     var a = alpha;
     var moves = moveList;
     var score = a;
     try mv.GenerateMoves(&moves, board, board.sideToMove);
-    if (moves.items.len > 0) sortMoves(&moves, board);
+    if (followPV == 1) {
+        EnablePVScoring(moves);
+    }
+    if (moves.items.len > 0) try sortMoves(&moves, board);
     if (moves.items.len == 0) {
         const kingBoard = if (board.sideToMove == 0) board.wKing else board.bKing;
         const kingSquare: u6 = @intCast(bit.LeastSignificantBit(kingBoard));
@@ -75,6 +84,7 @@ fn NegaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
     }
 
     for (0..moves.items.len) |m| {
+        nodes += 1;
         ply += 1;
         var b = board.*;
         const move = moves.items[m];
@@ -83,7 +93,6 @@ fn NegaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
             ply -= 1;
             continue;
         }
-        // const newList = moveList;
         score = -(try NegaMax(&b, moveList, depth - 1, -beta, -a));
         ply -= 1;
 
@@ -122,7 +131,7 @@ fn Quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
     var moves = moveList;
     var score = a;
     try mv.GenerateMoves(&moves, board, board.sideToMove);
-    if (moves.items.len > 0) sortMoves(&moves, board);
+    if (moves.items.len > 0) try sortMoves(&moves, board);
     for (0..moves.items.len) |m| {
         ply += 1;
         const move = moves.items[m];
@@ -136,7 +145,6 @@ fn Quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
             ply -= 1;
             continue;
         }
-        // const newList = moveList;
         score = -(try Quiesce(&b, moveList, -beta, -a));
         ply -= 1;
         if (score > a) a = score;
@@ -146,12 +154,12 @@ fn Quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
     return a;
 }
 
-fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) void {
+fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
     var scores = std.ArrayList(i32).init(std.heap.page_allocator);
     defer scores.deinit();
 
     for (moveList.items) |m| {
-        const score = ScoreMove(m, board);
+        const score = try ScoreMove(m, board);
         scores.append(score) catch unreachable;
     }
 
@@ -175,9 +183,16 @@ fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) void {
     }
 }
 
-fn ScoreMove(move: mv.Move, board: *brd.Board) i32 {
+fn ScoreMove(move: mv.Move, board: *brd.Board) !i32 {
     var score: i32 = 0;
+    if (scorePV == 1 and pvTable[0][ply].Equals(move)) {
+        try std.io.getStdOut().writer().print("current PV move: ", .{});
+        try PrintMove(move);
+        try std.io.getStdOut().writer().print("ply: {}\n", .{ply});
 
+        scorePV = 0;
+        return 20000;
+    }
     if (move.isCapture) {
         score += ScoreCapture(move, board) + 10000;
     } else {
@@ -220,4 +235,10 @@ fn GetPieceValue(piece: brd.Pieces) i32 {
             return 0;
         },
     }
+}
+
+fn PrintMove(move: mv.Move) !void {
+    const pvstart = try sqr.Square.fromIndex(move.source);
+    const pvtarget = try sqr.Square.fromIndex(move.target);
+    try std.io.getStdOut().writer().print("{s}{s} ", .{ pvstart.toString(), pvtarget.toString() });
 }

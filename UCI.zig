@@ -246,7 +246,7 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
             const begin = std.time.milliTimestamp();
             const bestMove = try search.Search(board, list, depthInt);
             const end = std.time.milliTimestamp();
-            std.debug.print("Elapsed:{} \n", .{end - begin});
+            std.debug.print("\nElapsed:{} \n", .{end - begin});
             const start = try sqr.Square.fromIndex(bestMove.source);
             const target = try sqr.Square.fromIndex(bestMove.target);
             var promo: []const u8 = undefined;
