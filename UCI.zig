@@ -7,6 +7,8 @@ const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 
+var depth: u8 = 7;
+
 fn charToFile(c: u8) u6 {
     return @intCast(c - 'a');
 }
@@ -80,12 +82,20 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
     if (piece == .k and from_square == 4 and to_square == 6) castles = .BK;
     if (piece == .k and from_square == 4 and to_square == 2) castles = .BQ;
 
+    var is_double = false;
+    if (piece == .P or piece == .p) {
+        if (@abs(to_square - from_square) == 16) {
+            is_double = true;
+        }
+    }
+
     return mv.Move{
         .source = from_square,
         .target = to_square,
         .promotion = promotion,
         .piece = piece,
         .castle = castles,
+        .isDoublePush = is_double,
     };
 }
 
@@ -173,15 +183,15 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     if (command2 == null) return;
 
     if (std.mem.eql(u8, command2.?, "perft")) {
-        const depth = split.next();
-        if (depth) |d| {
-            const depth_int = try std.fmt.parseInt(u8, d, 10);
+        const depth_str = split.next();
+        if (depth_str) |d| {
+            depth = try std.fmt.parseInt(u8, d, 10);
             var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
             const allocator = arena.allocator();
             var list = std.ArrayList(mv.Move).init(allocator);
             defer list.deinit();
             const start_time = std.time.milliTimestamp();
-            const pos = try perft.perft(board, list, depth_int, depth_int, board.sideToMove, allocator);
+            const pos = try perft.perft(board, list, depth, depth, board.sideToMove, allocator);
             const end_time = std.time.milliTimestamp();
             const diff: u64 = @intCast(end_time - start_time);
             try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
@@ -191,74 +201,44 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
             try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
             try std.io.getStdOut().writer().print("\nElapsed Time: {} ms \n\n", .{diff});
         }
+        return;
     } else if (std.mem.eql(u8, command2.?, "depth")) {
-        const depth = split.next();
-        if (depth) |d| {
-            const depth_int = try std.fmt.parseInt(u8, d, 10);
-            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-            const allocator = arena.allocator();
-            var list = std.ArrayList(mv.Move).init(allocator);
-            defer list.deinit();
-            const begin = std.time.milliTimestamp();
-            const best_move = try search.Search(board, list, depth_int);
-            const end = std.time.milliTimestamp();
-            std.debug.print("\nElapsed:{} \n", .{end - begin});
-            const start = try sqr.Square.FromIndex(best_move.source);
-            const target = try sqr.Square.FromIndex(best_move.target);
-            var promo: []const u8 = undefined;
-            if (best_move.promotion != .X) {
-                switch (best_move.promotion) {
-                    .N => {
-                        promo = "n";
-                    },
-                    .B => {
-                        promo = "b";
-                    },
-                    .R => {
-                        promo = "r";
-                    },
-                    .Q => {
-                        promo = "q";
-                    },
-                    else => {
-                        promo = "";
-                    },
-                }
-                try std.io.getStdOut().writer().print("bestmove {s}{s}{s}\n", .{ start.toString(), target.toString(), promo });
-            } else {
-                try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
-            }
+        const depth_str = split.next();
+        if (depth_str) |d| {
+            depth = try std.fmt.parseInt(u8, d, 10);
         }
     } else if (std.mem.eql(u8, command2.?, "wtime")) {
-        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        const allocator = arena.allocator();
-        var list = std.ArrayList(mv.Move).init(allocator);
-        defer list.deinit();
-        const best_move = try search.Search(board, list, 5);
-        const start = try sqr.Square.FromIndex(best_move.source);
-        const target = try sqr.Square.FromIndex(best_move.target);
-        var promo: u8 = undefined;
-        if (best_move.promotion != .X) {
-            switch (best_move.promotion) {
-                .N => {
-                    promo = if (board.sideToMove == 0) 'N' else 'n';
-                },
-                .B => {
-                    promo = if (board.sideToMove == 0) 'B' else 'b';
-                },
-                .R => {
-                    promo = if (board.sideToMove == 0) 'R' else 'r';
-                },
-                .Q => {
-                    promo = if (board.sideToMove == 0) 'Q' else 'q';
-                },
-                else => {
-                    promo = 0;
-                },
-            }
-            try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
-        } else {
-            try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
+        //TODO: Handle time management
+    }
+
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const allocator = arena.allocator();
+    var list = std.ArrayList(mv.Move).init(allocator);
+    defer list.deinit();
+    const best_move = try search.Search(board, list, depth);
+    const start = try sqr.Square.FromIndex(best_move.source);
+    const target = try sqr.Square.FromIndex(best_move.target);
+    var promo: u8 = undefined;
+    if (best_move.promotion != .X) {
+        switch (best_move.promotion) {
+            .N => {
+                promo = if (board.sideToMove == 0) 'N' else 'n';
+            },
+            .B => {
+                promo = if (board.sideToMove == 0) 'B' else 'b';
+            },
+            .R => {
+                promo = if (board.sideToMove == 0) 'R' else 'r';
+            },
+            .Q => {
+                promo = if (board.sideToMove == 0) 'Q' else 'q';
+            },
+            else => {
+                promo = 0;
+            },
         }
+        try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+    } else {
+        try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
     }
 }
