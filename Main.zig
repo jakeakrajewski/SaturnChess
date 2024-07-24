@@ -12,11 +12,11 @@ const eval = @import("Evaluate.zig");
 const builtin = @import("builtin");
 
 pub fn main() !void {
-    try map.InitializeAttackTables();
-    try UCILoop();
+    try map.initializeAttackTables();
+    try uciLoop();
 }
 
-pub fn UCILoop() !void {
+pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
     try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
     try std.io.getStdOut().writer().print("uciok\n", .{});
@@ -48,13 +48,13 @@ pub fn UCILoop() !void {
             const command = split.first();
 
             if (std.mem.eql(u8, command, "go")) {
-                try uci.Go(&board, input);
+                try uci.go(&board, input);
             } else if (std.mem.eql(u8, command, "position")) {
-                try uci.Position(&board, input);
+                try uci.position(&board, input);
             } else if (std.mem.eql(u8, input, "isready")) {
                 try std.io.getStdOut().writer().print("readyok\n", .{});
             } else if (std.mem.eql(u8, input, "ucinewgame")) {
-                try uci.Position(&board, "position startpos");
+                try uci.position(&board, "position startpos");
             } else if (std.mem.eql(u8, input, "uci")) {
                 try std.io.getStdOut().writer().print("id name Saturn\n", .{});
                 try std.io.getStdOut().writer().print("id author Jake Krajewski\n", .{});
@@ -68,37 +68,37 @@ pub fn UCILoop() !void {
 
 pub fn printTestBoards(bitboard: *brd.Board) void {
     std.debug.print("\nWhite Pawns: \n", .{});
-    bit.Print(bitboard.wPawns);
+    bit.print(bitboard.wPawns);
     std.debug.print("\nWhite Knights: \n", .{});
-    bit.Print(bitboard.wKnights);
+    bit.print(bitboard.wKnights);
     std.debug.print("\nWhite Bishops: \n", .{});
-    bit.Print(bitboard.wBishops);
+    bit.print(bitboard.wBishops);
     std.debug.print("\nWhite Rooks: \n", .{});
-    bit.Print(bitboard.wRooks);
+    bit.print(bitboard.wRooks);
     std.debug.print("\nWhite Queens: \n", .{});
-    bit.Print(bitboard.wQueens);
+    bit.print(bitboard.wQueens);
     std.debug.print("\nWhite Kings: \n", .{});
-    bit.Print(bitboard.wKing);
+    bit.print(bitboard.wKing);
     std.debug.print("\nWhite Pieces: \n", .{});
-    bit.Print(bitboard.wPieces());
+    bit.print(bitboard.wPieces());
     std.debug.print("\nBlack Pawns: \n", .{});
-    bit.Print(bitboard.bPawns);
+    bit.print(bitboard.bPawns);
     std.debug.print("\nBlack Knights: \n", .{});
-    bit.Print(bitboard.bKnights);
+    bit.print(bitboard.bKnights);
     std.debug.print("\nBlack Bishops: \n", .{});
-    bit.Print(bitboard.bBishops);
+    bit.print(bitboard.bBishops);
     std.debug.print("\nBlack Rooks: \n", .{});
-    bit.Print(bitboard.bRooks);
+    bit.print(bitboard.bRooks);
     std.debug.print("\nBlack Queens: \n", .{});
-    bit.Print(bitboard.bQueens);
+    bit.print(bitboard.bQueens);
     std.debug.print("\nBlack Kings: \n", .{});
-    bit.Print(bitboard.bKing);
+    bit.print(bitboard.bKing);
     std.debug.print("\nBlack Pieces: \n", .{});
-    bit.Print(bitboard.bPieces());
+    bit.print(bitboard.bPieces());
     std.debug.print("\nAll Pieces: \n", .{});
-    bit.Print(bitboard.allPieces());
+    bit.print(bitboard.allPieces());
     std.debug.print("\nEn Passant Square: \n", .{});
-    bit.Print(bitboard.enPassantSquare);
+    bit.print(bitboard.enPassantSquare);
 
     std.debug.print("\nCastling Rights: {d} \n", .{bitboard.castle});
 

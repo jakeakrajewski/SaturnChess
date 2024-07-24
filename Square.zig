@@ -26,7 +26,7 @@ pub const Square = enum {
         .XX,
     };
 
-    pub fn fromIndex(index: u6) !Square {
+    pub fn FromIndex(index: u6) !Square {
         if (index >= 64) return error.InvalidIndex;
         return Squares[index];
     }

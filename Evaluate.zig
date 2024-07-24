@@ -9,75 +9,75 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 
-pub inline fn Evaluate(board: brd.Board) i64 {
+pub inline fn evaluate(board: brd.Board) i64 {
     var score: i64 = 0;
-    score += MaterialScore(board);
-    score += PieceSquareScore(board);
+    score += materialScore(board);
+    score += pieceSquareScore(board);
     return if (board.sideToMove == 0) score else -score;
 }
-pub inline fn MaterialScore(board: brd.Board) i64 {
+pub inline fn materialScore(board: brd.Board) i64 {
     var score: i64 = 0;
 
-    score += 100 * (@as(i64, bit.BitCount(board.wPawns)) - bit.BitCount(board.bPawns));
-    score += 300 * (@as(i64, bit.BitCount(board.wKnights)) - bit.BitCount(board.bKnights));
-    score += 300 * (@as(i64, bit.BitCount(board.wBishops)) - bit.BitCount(board.bBishops));
-    score += 500 * (@as(i64, bit.BitCount(board.wRooks)) - bit.BitCount(board.bRooks));
-    score += 900 * (@as(i64, bit.BitCount(board.wQueens)) - bit.BitCount(board.bQueens));
-    score += 10000 * (@as(i64, bit.BitCount(board.wKing)) - bit.BitCount(board.bKing));
+    score += 100 * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
+    score += 300 * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
+    score += 300 * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
+    score += 500 * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
+    score += 900 * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
+    score += 10000 * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
 
     return score;
 }
 
-pub inline fn PieceSquareScore(board: brd.Board) i64 {
+pub inline fn pieceSquareScore(board: brd.Board) i64 {
     var b = board;
     var score: i64 = 0;
 
-    const bitBoards = b.GenerateBoardArray();
+    const bitBoards = b.generateBoardArray();
 
     for (0..12) |i| {
-        var pieceBoard = bitBoards[i];
+        var piece_board = bitBoards[i];
 
-        while (pieceBoard > 0) {
-            const square = bit.LeastSignificantBit(pieceBoard);
+        while (piece_board > 0) {
+            const square = bit.leastSignificantBit(piece_board);
 
-            bit.PopBit(&pieceBoard, (@intCast(square)));
+            bit.popBit(&piece_board, (@intCast(square)));
 
             switch (i) {
                 0 => {
-                    score += pawnPSV[square];
+                    score += pawn_psv[square];
                 },
                 1 => {
-                    score += knightPSV[square];
+                    score += knight_psv[square];
                 },
                 2 => {
-                    score += bishopPSV[square];
+                    score += bishop_psv[square];
                 },
                 3 => {
-                    score += rookPSV[square];
+                    score += rook_psv[square];
                 },
                 4 => {
                     continue;
                 },
                 5 => {
-                    score -= kingScorePSV[square];
+                    score -= king_psv[square];
                 },
                 6 => {
-                    score -= blackPawnPSV[square];
+                    score -= black_pawn_psv[square];
                 },
                 7 => {
-                    score -= blackKnightPSV[square];
+                    score -= black_knight_psv[square];
                 },
                 8 => {
-                    score -= blackBishopPSV[square];
+                    score -= black_bishop_psv[square];
                 },
                 9 => {
-                    score -= blackRookPSV[square];
+                    score -= black_rook_psv[square];
                 },
                 10 => {
                     continue;
                 },
                 11 => {
-                    score -= blackKingScorePSV[square];
+                    score -= black_king_psv[square];
                 },
                 else => {
                     continue;
@@ -91,7 +91,7 @@ pub inline fn PieceSquareScore(board: brd.Board) i64 {
 
 // zig fmt: off
 
-const pawnPSV: [64]i64 = .{
+const pawn_psv: [64]i64 = .{
     90, 90, 90, 90, 90, 90, 90, 90,
     30, 30, 30, 40, 40, 30, 30, 30,
     20, 20, 20, 30, 30, 30, 20, 20,
@@ -102,7 +102,7 @@ const pawnPSV: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
 };
 
-const blackPawnPSV: [64]i64 = .{
+const black_pawn_psv: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0, -10,-10,  0,  0,  0,
      0,  0,  0,   5,  5,  0,  0,  0,
@@ -114,7 +114,7 @@ const blackPawnPSV: [64]i64 = .{
 };
 
 
-const knightPSV: [64]i64 = .{
+const knight_psv: [64]i64 = .{
     -5,  0,  0,  0,  0,  0,  0, -5,
     -5,  0,  0, 10, 10,  0,  0, -5,
     -5,  5, 20, 20, 20, 20,  5, -5,
@@ -125,7 +125,7 @@ const knightPSV: [64]i64 = .{
     -5,-10,  0,  0,  0,  0,-10, -5,
 };
 
-const blackKnightPSV: [64]i64 = .{
+const black_knight_psv: [64]i64 = .{
     -5,-10,  0,  0,  0,  0,-10, -5,
     -5,  0,  0,  0,  0,  0,  0, -5,
     -5,  5, 20, 10, 10, 20,  5, -5,
@@ -137,7 +137,7 @@ const blackKnightPSV: [64]i64 = .{
 };
 
 
-const bishopPSV: [64]i64 = .{
+const bishop_psv: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0, 10, 10,  0,  0,  0,
@@ -148,7 +148,7 @@ const bishopPSV: [64]i64 = .{
      0, 30,  0,  0,  0,  0, 30,  0,
 };
 
-const blackBishopPSV: [64]i64 = .{
+const black_bishop_psv: [64]i64 = .{
      0, 30,  0,  0,  0,  0, 30,  0,
      0,  0,  0,  0,  0,  0, 10,  0,
      0,  0, 10, 20, 20, 10,  0,  0,
@@ -161,7 +161,7 @@ const blackBishopPSV: [64]i64 = .{
 
 
 
-const rookPSV: [64]i64 = .{
+const rook_psv: [64]i64 = .{
     50, 50, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
      0,  0, 10, 20, 20, 10,  0,  0,
@@ -172,7 +172,7 @@ const rookPSV: [64]i64 = .{
      0,  0,  0, 20, 20,  0,  0,  0,
 };
 
-const blackRookPSV: [64]i64 = .{
+const black_rook_psv: [64]i64 = .{
      0,  0,  0, 20, 20,  0,  0,  0,
      0,  0, 10, 20, 20, 10,  0,  0,
      0,  0, 10, 20, 20, 10,  0,  0,
@@ -183,7 +183,7 @@ const blackRookPSV: [64]i64 = .{
     50, 50, 50, 50, 50, 50, 50, 50,
 };
 
-const kingScorePSV: [64]i64 = .{
+const king_psv: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  5,  5,  5,  5,  0,  0,
      0,  5,  5, 10, 10,  5,  5,  0,
@@ -194,7 +194,7 @@ const kingScorePSV: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
 };
 
-const blackKingScorePSV: [64]i64 = .{
+const black_king_psv: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  5,  5,  0,  0,  5,  5,  0,
      0,  5,  5, 10, 10,  5,  5,  0,

@@ -7,48 +7,6 @@ const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 
-pub fn UCILoop() !void {
-    try std.io.getStdOut().writer().print("id name Saturn\n", .{});
-    try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
-    try std.io.getStdOut().writer().print("uciok\n", .{});
-    const allocator = std.heap.page_allocator;
-
-    var board: brd.Board = undefined;
-    brd.setBoardFromFEN(fen.start_position, &board);
-    var buffer = try allocator.alloc(u8, 1024);
-
-    defer allocator.free(buffer);
-
-    while (true) {
-        const input_len = try std.io.getStdIn().reader().readUntilDelimiterOrEof(buffer, '\n');
-
-        if (input_len) |l| {
-            const input = buffer[0..l.len];
-
-            if (std.mem.eql(u8, input, "quit")) {
-                break;
-            }
-
-            var split = std.mem.split(u8, input, " ");
-            const command = split.first();
-
-            if (std.mem.eql(u8, command, "go")) {
-                try Go(&board, input);
-            } else if (std.mem.eql(u8, command, "position")) {
-                try Position(&board, input);
-            } else if (std.mem.eql(u8, input, "isready")) {
-                try std.io.getStdOut().writer().print("readyok\n", .{});
-            } else if (std.mem.eql(u8, input, "ucinewgame")) {
-                try Position(&board, "position startpos");
-            } else if (std.mem.eql(u8, input, "uci")) {
-                try std.io.getStdOut().writer().print("id name Saturn\n", .{});
-                try std.io.getStdOut().writer().print("id name Jake Krajewski\n", .{});
-                try std.io.getStdOut().writer().print("uciok\n", .{});
-            }
-        }
-    }
-}
-
 fn charToFile(c: u8) u6 {
     return @intCast(c - 'a');
 }
@@ -101,20 +59,20 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
             }
         }
     }
-    const pieceBoard = @as(u64, 1) << from_square;
+    const piece_board = @as(u64, 1) << from_square;
     var piece: brd.Pieces = undefined;
-    if ((board.wPawns & pieceBoard) > 0) piece = .P;
-    if ((board.wKnights & pieceBoard) > 0) piece = .N;
-    if ((board.wBishops & pieceBoard) > 0) piece = .B;
-    if ((board.wRooks & pieceBoard) > 0) piece = .R;
-    if ((board.wQueens & pieceBoard) > 0) piece = .Q;
-    if ((board.wKing & pieceBoard) > 0) piece = .K;
-    if ((board.bPawns & pieceBoard) > 0) piece = .p;
-    if ((board.bKnights & pieceBoard) > 0) piece = .n;
-    if ((board.bBishops & pieceBoard) > 0) piece = .b;
-    if ((board.bRooks & pieceBoard) > 0) piece = .r;
-    if ((board.bQueens & pieceBoard) > 0) piece = .q;
-    if ((board.bKing & pieceBoard) > 0) piece = .k;
+    if ((board.wPawns & piece_board) > 0) piece = .P;
+    if ((board.wKnights & piece_board) > 0) piece = .N;
+    if ((board.wBishops & piece_board) > 0) piece = .B;
+    if ((board.wRooks & piece_board) > 0) piece = .R;
+    if ((board.wQueens & piece_board) > 0) piece = .Q;
+    if ((board.wKing & piece_board) > 0) piece = .K;
+    if ((board.bPawns & piece_board) > 0) piece = .p;
+    if ((board.bKnights & piece_board) > 0) piece = .n;
+    if ((board.bBishops & piece_board) > 0) piece = .b;
+    if ((board.bRooks & piece_board) > 0) piece = .r;
+    if ((board.bQueens & piece_board) > 0) piece = .q;
+    if ((board.bKing & piece_board) > 0) piece = .k;
 
     var castles: brd.Castle = .N;
     if (piece == .K and from_square == 60 and to_square == 62) castles = .WK;
@@ -131,7 +89,7 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
     };
 }
 
-pub fn Position(board: *brd.Board, tokens: []const u8) !void {
+pub fn position(board: *brd.Board, tokens: []const u8) !void {
     var split = std.mem.split(u8, tokens, " ");
     const command = split.next().?;
 
@@ -145,23 +103,23 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
     if (std.mem.eql(u8, command2.?, "startpos")) {
         brd.setBoardFromFEN(fen.start_position, board);
 
-        var stillMoves = true;
+        var still_moves = true;
 
         const command3 = split.next();
         if (command3 == null) return;
         if (std.mem.eql(u8, command3.?, "moves")) {
-            while (stillMoves) {
+            while (still_moves) {
                 const move = split.next();
                 if (move) |m| {
-                    const parsedMove = parseMove(m, board.*);
-                    if (parsedMove) |pm| {
-                        const result = mv.MakeMove(pm, board, board.sideToMove);
+                    const parsed_move = parseMove(m, board.*);
+                    if (parsed_move) |pm| {
+                        const result = mv.makeMove(pm, board, board.sideToMove);
                         if (!result) {
                             @panic("Invalid move received in position command");
                         }
                     }
                 } else {
-                    stillMoves = false;
+                    still_moves = false;
                 }
             }
         }
@@ -180,30 +138,30 @@ pub fn Position(board: *brd.Board, tokens: []const u8) !void {
         const fenString = try std.fmt.bufPrint(buffer, "{s} {s} {s} {s} {s} {s}", .{ pos, side, castles, ep, majorClock, minorClock });
         brd.setBoardFromFEN(fenString, board);
 
-        var stillMoves = true;
+        var still_moves = true;
 
         const command3 = split.next();
         if (command3 == null) return;
         if (std.mem.eql(u8, command3.?, "moves")) {
-            while (stillMoves) {
+            while (still_moves) {
                 const move = split.next();
                 if (move) |m| {
-                    const parsedMove = parseMove(m, board.*);
-                    if (parsedMove) |pm| {
-                        const result = mv.MakeMove(pm, board, board.sideToMove);
+                    const parsed_move = parseMove(m, board.*);
+                    if (parsed_move) |pm| {
+                        const result = mv.makeMove(pm, board, board.sideToMove);
                         if (!result) {
                             @panic("Invalid move received in position command");
                         }
                     }
                 } else {
-                    stillMoves = false;
+                    still_moves = false;
                 }
             }
         }
     }
 }
 
-pub fn Go(board: *brd.Board, tokens: []const u8) !void {
+pub fn go(board: *brd.Board, tokens: []const u8) !void {
     var split = std.mem.split(u8, tokens, " ");
     const command = split.first();
 
@@ -217,41 +175,39 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
     if (std.mem.eql(u8, command2.?, "perft")) {
         const depth = split.next();
         if (depth) |d| {
-            const depthInt = try std.fmt.parseInt(u8, d, 10);
+            const depth_int = try std.fmt.parseInt(u8, d, 10);
             var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
             const allocator = arena.allocator();
             var list = std.ArrayList(mv.Move).init(allocator);
             defer list.deinit();
-            const startTime = std.time.milliTimestamp();
-            const pos = try perft.Perft(board, list, depthInt, depthInt, board.sideToMove, allocator);
-            const endTime = std.time.milliTimestamp();
-            const diff: u64 = @intCast(endTime - startTime);
+            const start_time = std.time.milliTimestamp();
+            const pos = try perft.perft(board, list, depth_int, depth_int, board.sideToMove, allocator);
+            const end_time = std.time.milliTimestamp();
+            const diff: u64 = @intCast(end_time - start_time);
             try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
             try std.io.getStdOut().writer().print("\nCaptures: {}", .{pos.Captures});
             try std.io.getStdOut().writer().print("\nEnPassant: {}", .{pos.EnPassant});
             try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
             try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
             try std.io.getStdOut().writer().print("\nElapsed Time: {} ms \n\n", .{diff});
-            // try std.io.getStdOut().writer().print("\nMove Generationg Time: {} ms", .{pos.GenerationTime});
-            // try std.io.getStdOut().writer().print("\nMake Move Time: {} ms\n", .{pos.MakeTime});
         }
     } else if (std.mem.eql(u8, command2.?, "depth")) {
         const depth = split.next();
         if (depth) |d| {
-            const depthInt = try std.fmt.parseInt(u8, d, 10);
+            const depth_int = try std.fmt.parseInt(u8, d, 10);
             var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
             const allocator = arena.allocator();
             var list = std.ArrayList(mv.Move).init(allocator);
             defer list.deinit();
             const begin = std.time.milliTimestamp();
-            const bestMove = try search.Search(board, list, depthInt);
+            const best_move = try search.Search(board, list, depth_int);
             const end = std.time.milliTimestamp();
             std.debug.print("\nElapsed:{} \n", .{end - begin});
-            const start = try sqr.Square.fromIndex(bestMove.source);
-            const target = try sqr.Square.fromIndex(bestMove.target);
+            const start = try sqr.Square.FromIndex(best_move.source);
+            const target = try sqr.Square.FromIndex(best_move.target);
             var promo: []const u8 = undefined;
-            if (bestMove.promotion != .X) {
-                switch (bestMove.promotion) {
+            if (best_move.promotion != .X) {
+                switch (best_move.promotion) {
                     .N => {
                         promo = "n";
                     },
@@ -278,12 +234,12 @@ pub fn Go(board: *brd.Board, tokens: []const u8) !void {
         const allocator = arena.allocator();
         var list = std.ArrayList(mv.Move).init(allocator);
         defer list.deinit();
-        const bestMove = try search.Search(board, list, 5);
-        const start = try sqr.Square.fromIndex(bestMove.source);
-        const target = try sqr.Square.fromIndex(bestMove.target);
+        const best_move = try search.Search(board, list, 5);
+        const start = try sqr.Square.FromIndex(best_move.source);
+        const target = try sqr.Square.FromIndex(best_move.target);
         var promo: u8 = undefined;
-        if (bestMove.promotion != .X) {
-            switch (bestMove.promotion) {
+        if (best_move.promotion != .X) {
+            switch (best_move.promotion) {
                 .N => {
                     promo = if (board.sideToMove == 0) 'N' else 'n';
                 },

@@ -7,30 +7,24 @@ const sqr = @import("Square.zig");
 
 const Allocator = std.mem.Allocator;
 
-pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
-    const otherSide: u1 = if (side == 0) 1 else 0;
+pub fn perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
+    const other_side: u1 = if (side == 0) 1 else 0;
     var moves = list;
 
     var pos: Position = Position{};
 
-    // const generateStart = std.time.milliTimestamp();
-    try move.GenerateMoves(&moves, board, side);
-    // const generateEnd = std.time.milliTimestamp();
-    // pos.GenerationTime = generateEnd - generateStart;
+    try move.generateMoves(&moves, board, side);
 
     if (depth == 1) {
-        pos.Update(moves);
+        pos.update(moves);
         return pos;
     }
 
     for (0..moves.items.len) |i| {
-        // const makeStart = std.time.milliTimestamp();
-        var cBoard = board.*;
-        const result = move.MakeMove(moves.items[i], &cBoard, side);
-        // const makeEnd = std.time.milliTimestamp();
-        // pos.MakeTime += makeEnd - makeStart;
+        var board_copy = board.*;
+        const result = move.makeMove(moves.items[i], &board_copy, side);
         if (result) {
-            const newPos = try Perft(&cBoard, list, startDepth, depth - 1, otherSide, allocator);
+            const newPos = try perft(&board_copy, list, startDepth, depth - 1, other_side, allocator);
             pos.Nodes += newPos.Nodes;
             pos.Captures += newPos.Captures;
             pos.EnPassant += newPos.EnPassant;
@@ -38,17 +32,17 @@ pub fn Perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, 
             pos.Promotions += newPos.Promotions;
             // pos.GenerationTime += newPos.GenerationTime;
             // pos.MakeTime += newPos.MakeTime;
-            var start = try sqr.Square.fromIndex(moves.items[i].source);
-            var end = try sqr.Square.fromIndex(moves.items[i].target);
+            var start = try sqr.Square.FromIndex(moves.items[i].source);
+            var end = try sqr.Square.FromIndex(moves.items[i].target);
             if (depth == startDepth) std.debug.print("\n     {s}{s}: {}", .{ start.toString(), end.toString(), newPos.Nodes });
         } else {
             const m = moves.items[i];
-            var start = try sqr.Square.fromIndex(m.source);
-            var end = try sqr.Square.fromIndex(m.target);
+            var start = try sqr.Square.FromIndex(m.source);
+            var end = try sqr.Square.FromIndex(m.target);
             std.debug.print("Piece: {}", .{m.piece});
             std.debug.print("Start: {s}", .{start.toString()});
             std.debug.print("End: {s}", .{end.toString()});
-            bit.Print(board.allPieces());
+            bit.print(board.allPieces());
             @panic("Illegal Move");
         }
     }
@@ -64,7 +58,7 @@ pub const Position = struct {
     // GenerationTime: i64 = 0,
     MakeTime: i64 = 0,
 
-    pub fn Update(self: *Position, moves: std.ArrayList(move.Move)) void {
+    pub fn update(self: *Position, moves: std.ArrayList(move.Move)) void {
         for (0..moves.items.len) |i| {
             self.Nodes += 1;
             if (moves.items[i].isCapture) self.Captures += 1;
