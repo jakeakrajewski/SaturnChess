@@ -11,7 +11,8 @@ const builtin = @import("builtin");
 var depth: u8 = 64;
 var white_time: i64 = 0;
 var black_time: i64 = 0;
-var increment: i64 = 0;
+var white_increment: i64 = 0;
+var black_increment: i64 = 0;
 
 pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -95,25 +96,25 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
 
     if (notation.len == 5) {
         const promo_piece = notation[4];
-        if (promo_piece == 'q' or promo_piece == 'r' or promo_piece == 'b' or promo_piece == 'n') {
-            switch (promo_piece) {
-                'N', 'n' => {
-                    promotion = .N;
-                },
-                'B', 'b' => {
-                    promotion = .B;
-                },
-                'R', 'r' => {
-                    promotion = .R;
-                },
-                'Q', 'q' => {
-                    promotion = .Q;
-                },
-                else => {
-                    promotion = .X;
-                },
-            }
+        // if (promo_piece == 'q' or promo_piece == 'r' or promo_piece == 'b' or promo_piece == 'n') {
+        switch (promo_piece) {
+            'N', 'n' => {
+                promotion = .N;
+            },
+            'B', 'b' => {
+                promotion = .B;
+            },
+            'R', 'r' => {
+                promotion = .R;
+            },
+            'Q', 'q' => {
+                promotion = .Q;
+            },
+            else => {
+                promotion = .X;
+            },
         }
+        // }
     }
     const piece_board = @as(u64, 1) << from_square;
     var piece: brd.Pieces = undefined;
@@ -138,10 +139,13 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
 
     var is_double = false;
     if (piece == .P or piece == .p) {
-        if (@abs(to_square - from_square) == 16) {
+        const to: i16 = @intCast(to_square);
+        const from: i16 = @intCast(from_square);
+        if (@abs(to - from) == 16) {
             is_double = true;
         }
     }
+    const ep = if (to_square == bit.leastSignificantBit(board.enPassantSquare)) true else false;
 
     return mv.Move{
         .source = from_square,
@@ -150,6 +154,7 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
         .piece = piece,
         .castle = castles,
         .isDoublePush = is_double,
+        .isEnPassant = ep,
     };
 }
 
@@ -272,6 +277,20 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
             if (black_time_remaining) |time| {
                 black_time = try std.fmt.parseInt(i64, time, 10);
             }
+            const white_inc_command = split.next();
+            if (std.mem.eql(u8, white_inc_command.?, "winc")) {
+                const white_inc_num = split.next();
+                if (white_inc_num) |num| {
+                    white_increment = try std.fmt.parseInt(i64, num, 10);
+                }
+                const black_inc_command = split.next();
+                if (std.mem.eql(u8, black_inc_command.?, "winc")) {
+                    const black_inc_num = split.next();
+                    if (black_inc_num) |num| {
+                        black_increment = try std.fmt.parseInt(i64, num, 10);
+                    }
+                }
+            }
         }
     }
 
@@ -280,33 +299,34 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     var list = std.ArrayList(mv.Move).init(allocator);
     defer list.deinit();
     const remaining_time = if (board.sideToMove == 0) white_time else black_time;
-    var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 40) + @divTrunc(increment, 2));
+    const increment = if (board.sideToMove == 0) white_increment else black_increment;
+    var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
     if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
     if (remaining_time < 0) time_allowance = 100;
     std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
     const best_move = try search.Search(board, list, depth, time_allowance);
     const start = try sqr.Square.FromIndex(best_move.source);
     const target = try sqr.Square.FromIndex(best_move.target);
-    var promo: u8 = undefined;
+    var promo: []const u8 = undefined;
     if (best_move.promotion != .X) {
         switch (best_move.promotion) {
             .N => {
-                promo = if (board.sideToMove == 0) 'N' else 'n';
+                promo = if (board.sideToMove == 0) "N" else "n";
             },
             .B => {
-                promo = if (board.sideToMove == 0) 'B' else 'b';
+                promo = if (board.sideToMove == 0) "B" else "b";
             },
             .R => {
-                promo = if (board.sideToMove == 0) 'R' else 'r';
+                promo = if (board.sideToMove == 0) "R" else "r";
             },
             .Q => {
-                promo = if (board.sideToMove == 0) 'Q' else 'q';
+                promo = if (board.sideToMove == 0) "Q" else "q";
             },
             else => {
-                promo = 0;
+                promo = "";
             },
         }
-        try std.io.getStdOut().writer().print("bestmove {s}{s}{}\n", .{ start.toString(), target.toString(), promo });
+        try std.io.getStdOut().writer().print("bestmove {s}{s}{s}\n", .{ start.toString(), target.toString(), promo });
     } else {
         try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
     }
@@ -349,6 +369,4 @@ pub fn printTestBoards(bitboard: *brd.Board) void {
     std.debug.print("\nCastling Rights: {d} \n", .{bitboard.castle});
 
     const s = sqr.Square.toIndex(.D3);
-    const attacked = bitboard.isSquareAttacked(s, 1);
-    std.debug.print("Square attacked: {}", .{attacked});
-}
+    const attacked = bitboard.isSquareAtt

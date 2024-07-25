@@ -11,6 +11,7 @@ var killer_moves: [max_ply][2]mv.Move = undefined;
 var history_moves: [64][12]i32 = undefined;
 var pv_length: [max_ply]i32 = undefined;
 var pv_table: [max_ply][max_ply]mv.Move = undefined;
+var prev_pv_table: [max_ply][max_ply]mv.Move = undefined;
 var ply: u16 = 0;
 var follow_pv: u1 = 0;
 var score_pv: u1 = 0;
@@ -43,6 +44,7 @@ pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, ti
     for (1..depth + 1) |d| {
         const current_time = std.time.milliTimestamp();
         if (current_time - search_start_time_stamp > time_allowance) break;
+        prev_pv_table = pv_table;
         follow_pv = 1;
         const score = try negaMax(b, moveList, @intCast(d), -1000000, 1000000);
         try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} pv ", .{ score, d, nodes });
@@ -51,7 +53,26 @@ pub fn Search(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, ti
         }
         try std.io.getStdOut().writer().print("\n", .{});
     }
-    return pv_table[0][0];
+
+    std.debug.print("\nPV Table: \n", .{});
+    for (0..8) |row| {
+        std.debug.print("\nDepth {}: ", .{row});
+        for (0..8) |i| {
+            printMoveDebug(pv_table[row][i]);
+        }
+    }
+    std.debug.print("\nPrevious PV Table: \n", .{});
+    for (0..8) |row| {
+        std.debug.print("\nDepth {}: ", .{row});
+        for (0..8) |i| {
+            printMoveDebug(prev_pv_table[row][i]);
+        }
+    }
+    if (stop_search) {
+        return prev_pv_table[0][0];
+    } else {
+        return pv_table[0][0];
+    }
 }
 
 fn enablePVScoring(moveList: std.ArrayList(mv.Move)) void {
@@ -70,8 +91,9 @@ fn negaMax(board: *brd.Board, moveList: std.ArrayList(mv.Move), depth: u8, alpha
     if (time_check == 0) {
         time_check = 200;
         if (std.time.milliTimestamp() - search_start_time_stamp > time_allowance) {
+            std.debug.print("\n Search Stopped!", .{});
             stop_search = true;
-            return eval.evaluate(board.*);
+            return 0;
         }
     }
     pv_length[ply] = ply;
@@ -146,6 +168,7 @@ fn quiesce(board: *brd.Board, moveList: std.ArrayList(mv.Move), alpha: i64, beta
     if (time_check == 0) {
         time_check = 200;
         if (std.time.milliTimestamp() - search_start_time_stamp > time_allowance) {
+            std.debug.print("\n Search Stopped!", .{});
             stop_search = true;
             return eval.evaluate(board.*);
         }
@@ -236,36 +259,4 @@ fn scoreCapture(move: mv.Move, board: *brd.Board) i32 {
     const targetPiece = board.GetPieceAtSquare(move.target);
 
     if (targetPiece) |tp| {
-        return getPieceValue(tp) - pieceValue;
-    }
-    return 0;
-}
-
-fn getPieceValue(piece: brd.Pieces) i32 {
-    switch (piece) {
-        .P, .p => {
-            return 100;
-        },
-        .N, .n => {
-            return 300;
-        },
-        .B, .b => {
-            return 300;
-        },
-        .R, .r => {
-            return 500;
-        },
-        .Q, .q => {
-            return 900;
-        },
-        else => {
-            return 0;
-        },
-    }
-}
-
-fn printMove(move: mv.Move) !void {
-    const source = try sqr.Square.FromIndex(move.source);
-    const target = try sqr.Square.FromIndex(move.target);
-    try std.io.getStdOut().writer().print("{s}{s} ", .{ source.toString(), target.toString() });
-}
+        retu

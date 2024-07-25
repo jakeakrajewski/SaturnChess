@@ -15,6 +15,12 @@ pub inline fn evaluate(board: brd.Board) i64 {
     score += pieceSquareScore(board);
     return if (board.sideToMove == 0) score else -score;
 }
+
+pub inline fn materialCount(board: brd.Board) i64 {
+    var b = board;
+    return bit.bitCount(b.allPieces() ^ (board.wPawns | board.bPawns)) - 2;
+}
+
 pub inline fn materialScore(board: brd.Board) i64 {
     var score: i64 = 0;
 
@@ -31,6 +37,7 @@ pub inline fn materialScore(board: brd.Board) i64 {
 pub inline fn pieceSquareScore(board: brd.Board) i64 {
     var b = board;
     var score: i64 = 0;
+    const end_game = if (materialCount(board) <= 7) true else false;
 
     const bitBoards = b.generateBoardArray();
 
@@ -59,7 +66,11 @@ pub inline fn pieceSquareScore(board: brd.Board) i64 {
                     continue;
                 },
                 5 => {
-                    score -= king_psv[square];
+                    if (end_game) {
+                        score -= king_psv[square];
+                    } else {
+                        score += king_mid_game_psv[square];
+                    }
                 },
                 6 => {
                     score -= black_pawn_psv[square];
@@ -77,7 +88,11 @@ pub inline fn pieceSquareScore(board: brd.Board) i64 {
                     continue;
                 },
                 11 => {
-                    score -= black_king_psv[square];
+                    if (end_game) {
+                        score -= black_king_psv[square];
+                    } else {
+                        score -= black_king_mid_game_psv[square];
+                    }
                 },
                 else => {
                     continue;
@@ -186,22 +201,4 @@ const black_rook_psv: [64]i64 = .{
 const king_psv: [64]i64 = .{
      0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  5,  5,  5,  5,  0,  0,
-     0,  5,  5, 10, 10,  5,  5,  0,
-     0,  5, 10, 20, 20, 10,  5,  0,
-     0,  5, 10, 20, 20, 10,  5,  0,
-     0,  5,  5, 10, 10,  5,  5,  0,
-     0,  5,  5,  0,  0,  5,  5,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,
-};
-
-const black_king_psv: [64]i64 = .{
-     0,  0,  0,  0,  0,  0,  0,  0,
-     0,  5,  5,  0,  0,  5,  5,  0,
-     0,  5,  5, 10, 10,  5,  5,  0,
-     0,  5, 10, 20, 20, 10,  5,  0,
-     0,  5, 10, 20, 20, 10,  5,  0,
-     0,  5,  5, 10, 10,  5,  5,  0,
-     0,  0,  5,  5,  5,  5,  0,  0,
-     0,  0,  0,  0,  0,  0,  0,  0,
-};
-
+     0,  5,  5, 10,
