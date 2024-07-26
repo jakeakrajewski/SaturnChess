@@ -13,7 +13,7 @@ var white_time: i64 = 0;
 var black_time: i64 = 0;
 var white_increment: i64 = 0;
 var black_increment: i64 = 0;
-var timed_search: bool = false;
+var timed_search: bool = true;
 
 pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -240,62 +240,65 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         @panic("Invalid command passed to go.");
     }
 
-    const command2 = split.next();
-    if (command2 == null) return;
+    var next_string = split.next();
+    if (next_string == null) return;
 
-    if (std.mem.eql(u8, command2.?, "perft")) {
-        const depth_str = split.next();
-        if (depth_str) |d| {
-            depth = try std.fmt.parseInt(u8, d, 10);
-            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-            const allocator = arena.allocator();
-            var list = std.ArrayList(mv.Move).init(allocator);
-            defer list.deinit();
-            const start_time = std.time.milliTimestamp();
-            const pos = try perft.perft(board, &list, depth, depth, board.sideToMove, allocator);
-            const end_time = std.time.milliTimestamp();
-            const diff: u64 = @intCast(end_time - start_time);
-            try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
-            try std.io.getStdOut().writer().print("\nCaptures: {}", .{pos.Captures});
-            try std.io.getStdOut().writer().print("\nEnPassant: {}", .{pos.EnPassant});
-            try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
-            try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
-            try std.io.getStdOut().writer().print("\nElapsed Time: {} ms \n\n", .{diff});
+    while (next_string != null) {
+        if (std.mem.eql(u8, next_string.?, "perft")) {
+            const depth_str = split.next();
+            if (depth_str) |d| {
+                depth = try std.fmt.parseInt(u8, d, 10);
+                var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+                const allocator = arena.allocator();
+                var list = std.ArrayList(mv.Move).init(allocator);
+                defer list.deinit();
+                const start_time = std.time.milliTimestamp();
+                const pos = try perft.perft(board, &list, depth, depth, board.sideToMove, allocator);
+                const end_time = std.time.milliTimestamp();
+                const diff: u64 = @intCast(end_time - start_time);
+                try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
+                try std.io.getStdOut().writer().print("\nCaptures: {}", .{pos.Captures});
+                try std.io.getStdOut().writer().print("\nEnPassant: {}", .{pos.EnPassant});
+                try std.io.getStdOut().writer().print("\nPromotions: {}", .{pos.Promotions});
+                try std.io.getStdOut().writer().print("\nCastles: {}", .{pos.Castles});
+                try std.io.getStdOut().writer().print("\nElapsed Time: {} ms \n\n", .{diff});
+            }
+            return;
         }
-        return;
-    } else if (std.mem.eql(u8, command2.?, "depth")) {
-        const depth_str = split.next();
-        timed_search = false;
-        if (depth_str) |d| {
-            depth = try std.fmt.parseInt(u8, d, 10);
+        if (std.mem.eql(u8, next_string.?, "depth")) {
+            next_string = split.next();
+            timed_search = false;
+            if (next_string) |d| {
+                depth = try std.fmt.parseInt(u8, d, 10);
+            }
         }
-    } else if (std.mem.eql(u8, command2.?, "wtime")) {
-        timed_search = true;
-        const white_time_remaining = split.next();
-        if (white_time_remaining) |time| {
-            white_time = try std.fmt.parseInt(i64, time, 10);
+        if (std.mem.eql(u8, next_string.?, "wtime")) {
+            timed_search = true;
+            next_string = split.next();
+            if (next_string) |time| {
+                white_time = try std.fmt.parseInt(i64, time, 10);
+            }
         }
-        const black_time_command = split.next();
-        if (std.mem.eql(u8, black_time_command.?, "btime")) {
-            const black_time_remaining = split.next();
-            if (black_time_remaining) |time| {
+
+        if (std.mem.eql(u8, next_string.?, "btime")) {
+            next_string = split.next();
+            if (next_string) |time| {
                 black_time = try std.fmt.parseInt(i64, time, 10);
             }
-            const white_inc_command = split.next();
-            if (std.mem.eql(u8, white_inc_command.?, "winc")) {
-                const white_inc_num = split.next();
-                if (white_inc_num) |num| {
-                    white_increment = try std.fmt.parseInt(i64, num, 10);
-                }
-                const black_inc_command = split.next();
-                if (std.mem.eql(u8, black_inc_command.?, "winc")) {
-                    const black_inc_num = split.next();
-                    if (black_inc_num) |num| {
-                        black_increment = try std.fmt.parseInt(i64, num, 10);
-                    }
-                }
+        }
+        if (std.mem.eql(u8, next_string.?, "winc")) {
+            next_string = split.next();
+            if (next_string) |num| {
+                white_increment = try std.fmt.parseInt(i64, num, 10);
             }
         }
+        if (std.mem.eql(u8, next_string.?, "binc")) {
+            next_string = split.next();
+            if (next_string) |num| {
+                black_increment = try std.fmt.parseInt(i64, num, 10);
+            }
+        }
+        next_string = split.next();
     }
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -307,7 +310,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
     if (timed_search) {
         if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
-        if (remaining_time < 0) time_allowance = 100;
+        if (time_allowance < 0) time_allowance = 100;
         std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
     } else {
         time_allowance = -1;
@@ -315,7 +318,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     const start_time = std.time.milliTimestamp();
     const best_move = try search.Search(board, &list, depth, timed_search, time_allowance);
     const end_time = std.time.milliTimestamp();
-    std.debug.print("\n Elapsed: {}\n", .{end_time - start_time});
+    std.debug.print("\nTotal Search Time: {}ms\n", .{end_time - start_time});
     const start = try sqr.Square.FromIndex(best_move.source);
     const target = try sqr.Square.FromIndex(best_move.target);
     var promo: []const u8 = undefined;

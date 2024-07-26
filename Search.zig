@@ -72,20 +72,6 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         try std.io.getStdOut().writer().print("\n", .{});
     }
 
-    std.debug.print("\nPV Table: \n", .{});
-    for (0..9) |row| {
-        std.debug.print("\nDepth {}: ", .{row});
-        for (0..9) |i| {
-            printMoveDebug(pv_table[row][i]);
-        }
-    }
-    std.debug.print("\nPrevious PV Table: \n", .{});
-    for (0..9) |row| {
-        std.debug.print("\nDepth {}: ", .{row});
-        for (0..9) |i| {
-            printMoveDebug(prev_pv_table[row][i]);
-        }
-    }
     if (stop_search) {
         return prev_pv_table[0][0];
     } else {
@@ -300,10 +286,6 @@ fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
 fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     var score: i32 = 0;
     if (score_pv == 1 and pv_table[0][ply].Equals(move)) {
-        try std.io.getStdOut().writer().print("current PV move: ", .{});
-        try printMove(move);
-        try std.io.getStdOut().writer().print("ply: {}\n", .{ply});
-
         score_pv = 0;
         return 20000;
     }
