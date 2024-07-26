@@ -50,7 +50,7 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         }
         prev_pv_table = pv_table;
         follow_pv = 1;
-        const score = try negaMax(b, moveList, @intCast(d), -1000000, 1000000);
+        const score = try negaScout(b, moveList, @intCast(d), -1000000, 1000000);
         try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} pv ", .{ score, d, nodes });
         for (0..@intCast(pv_length[ply])) |count| {
             try printMove(pv_table[0][count]);
@@ -90,7 +90,7 @@ fn enablePVScoring(moveList: *std.ArrayList(mv.Move)) void {
     }
 }
 
-fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alpha: i64, beta: i64) !i64 {
+fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, a: i64, b: i64) !i64 {
     if (timed_search) {
         time_check -= 1;
         if (time_check == 0) {
@@ -103,6 +103,8 @@ fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alph
         }
     }
     pv_length[ply] = ply;
+    var alpha = a;
+    const beta = b;
 
     if (depth == 0) {
         return quiesce(board, moveList, alpha, beta);
@@ -110,10 +112,9 @@ fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alph
     if (ply > max_ply - 1) {
         return eval.evaluate(board.*);
     }
-    var a = alpha;
     var moves = std.ArrayList(mv.Move).init(moveList.allocator);
     defer moves.deinit();
-    var score = a;
+    var score = alpha;
     try mv.generateMoves(&moves, board, board.sideToMove);
     if (follow_pv == 1) {
         enablePVScoring(&moves);
@@ -133,17 +134,25 @@ fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alph
         if (stop_search) break;
         nodes += 1;
         ply += 1;
-        var b = board.*;
+        var board_copy = board.*;
         const move = moves.items[m];
-        const result = mv.makeMove(move, &b, b.sideToMove);
+        const result = mv.makeMove(move, &board_copy, board_copy.sideToMove);
         if (!result) {
             ply -= 1;
             continue;
         }
-        score = -(try negaMax(&b, moveList, depth - 1, -beta, -a));
+        if (m == 0) {
+            score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+        } else {
+            score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
+            if (score > alpha and score < beta) {
+                score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -score));
+            }
+        }
+
         ply -= 1;
 
-        if (score > a) {
+        if (score > alpha) {
             if (!move.isCapture) {
                 history_moves[move.target][@intFromEnum(move.piece)] += depth;
             }
@@ -156,7 +165,7 @@ fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alph
 
             pv_length[ply] = pv_length[ply + 1];
 
-            a = score;
+            alpha = score;
         }
         if (score >= beta) {
             if (!move.isCapture) {
@@ -167,7 +176,7 @@ fn negaMax(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, alph
         }
     }
 
-    return a;
+    return alpha;
 }
 
 fn quiesce(board: *brd.Board, moveList: *std.ArrayList(mv.Move), alpha: i64, beta: i64) !i64 {
