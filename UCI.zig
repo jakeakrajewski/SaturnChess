@@ -13,6 +13,7 @@ var white_time: i64 = 0;
 var black_time: i64 = 0;
 var white_increment: i64 = 0;
 var black_increment: i64 = 0;
+var timed_search: bool = false;
 
 pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -203,6 +204,7 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         var allocator = arena.allocator();
         const buffer = try allocator.alloc(u8, fenLength);
+        defer allocator.free(buffer);
 
         const fenString = try std.fmt.bufPrint(buffer, "{s} {s} {s} {s} {s} {s}", .{ pos, side, castles, ep, majorClock, minorClock });
         brd.setBoardFromFEN(fenString, board);
@@ -250,7 +252,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
             var list = std.ArrayList(mv.Move).init(allocator);
             defer list.deinit();
             const start_time = std.time.milliTimestamp();
-            const pos = try perft.perft(board, list, depth, depth, board.sideToMove, allocator);
+            const pos = try perft.perft(board, &list, depth, depth, board.sideToMove, allocator);
             const end_time = std.time.milliTimestamp();
             const diff: u64 = @intCast(end_time - start_time);
             try std.io.getStdOut().writer().print("\nMoves: {}", .{pos.Nodes});
@@ -263,10 +265,12 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         return;
     } else if (std.mem.eql(u8, command2.?, "depth")) {
         const depth_str = split.next();
+        timed_search = false;
         if (depth_str) |d| {
             depth = try std.fmt.parseInt(u8, d, 10);
         }
     } else if (std.mem.eql(u8, command2.?, "wtime")) {
+        timed_search = true;
         const white_time_remaining = split.next();
         if (white_time_remaining) |time| {
             white_time = try std.fmt.parseInt(i64, time, 10);
@@ -301,10 +305,17 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     const remaining_time = if (board.sideToMove == 0) white_time else black_time;
     const increment = if (board.sideToMove == 0) white_increment else black_increment;
     var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
-    if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
-    if (remaining_time < 0) time_allowance = 100;
-    std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
-    const best_move = try search.Search(board, list, depth, time_allowance);
+    if (timed_search) {
+        if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
+        if (remaining_time < 0) time_allowance = 100;
+        std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
+    } else {
+        time_allowance = -1;
+    }
+    const start_time = std.time.milliTimestamp();
+    const best_move = try search.Search(board, &list, depth, timed_search, time_allowance);
+    const end_time = std.time.milliTimestamp();
+    std.debug.print("\n Elapsed: {}\n", .{end_time - start_time});
     const start = try sqr.Square.FromIndex(best_move.source);
     const target = try sqr.Square.FromIndex(best_move.target);
     var promo: []const u8 = undefined;
@@ -369,4 +380,6 @@ pub fn printTestBoards(bitboard: *brd.Board) void {
     std.debug.print("\nCastling Rights: {d} \n", .{bitboard.castle});
 
     const s = sqr.Square.toIndex(.D3);
-    const attacked = bitboard.isSquareAtt
+    const attacked = bitboard.isSquareAttacked(s, 1);
+    std.debug.print("Square attacked: {}", .{attacked});
+}

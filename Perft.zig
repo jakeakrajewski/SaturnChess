@@ -7,9 +7,10 @@ const sqr = @import("Square.zig");
 
 const Allocator = std.mem.Allocator;
 
-pub fn perft(board: *brd.Board, list: std.ArrayList(move.Move), startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
+pub fn perft(board: *brd.Board, list: *std.ArrayList(move.Move), startDepth: u8, depth: u8, side: u1, allocator: Allocator) !Position {
     const other_side: u1 = if (side == 0) 1 else 0;
-    var moves = list;
+    var moves = std.ArrayList(move.Move).init(list.allocator);
+    defer moves.deinit();
 
     var pos: Position = Position{};
 
