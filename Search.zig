@@ -20,6 +20,7 @@ var time_check: u16 = 200;
 var time_allowance: i64 = 0;
 var stop_search = false;
 var timed_search = false;
+var aspiration_window_adjustment = 50;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
     timed_search = timedSearch;
@@ -43,6 +44,9 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
 
     const b = board;
     ply = 0;
+
+    var alpha: i64 = -1000000;
+    var beta: i64 = 1000000;
     for (1..depth + 1) |d| {
         if (timed_search) {
             const current_time = std.time.milliTimestamp();
@@ -50,7 +54,17 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         }
         prev_pv_table = pv_table;
         follow_pv = 1;
-        const score = try negaScout(b, moveList, @intCast(d), -1000000, 1000000);
+        const score = try negaScout(b, moveList, @intCast(d), alpha, beta);
+
+        if (score <= alpha or score >= beta) {
+            alpha = -50000;
+            beta = 50000;
+            continue;
+        }
+
+        alpha = score - 50;
+        beta = score + 50;
+
         try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} pv ", .{ score, d, nodes });
         for (0..@intCast(pv_length[ply])) |count| {
             try printMove(pv_table[0][count]);
