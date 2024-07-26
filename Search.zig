@@ -59,16 +59,16 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
     }
 
     std.debug.print("\nPV Table: \n", .{});
-    for (0..8) |row| {
+    for (0..9) |row| {
         std.debug.print("\nDepth {}: ", .{row});
-        for (0..8) |i| {
+        for (0..9) |i| {
             printMoveDebug(pv_table[row][i]);
         }
     }
     std.debug.print("\nPrevious PV Table: \n", .{});
-    for (0..8) |row| {
+    for (0..9) |row| {
         std.debug.print("\nDepth {}: ", .{row});
-        for (0..8) |i| {
+        for (0..9) |i| {
             printMoveDebug(prev_pv_table[row][i]);
         }
     }
@@ -90,7 +90,7 @@ fn enablePVScoring(moveList: *std.ArrayList(mv.Move)) void {
     }
 }
 
-fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, a: i64, b: i64) !i64 {
+fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a: i64, b: i64) !i64 {
     if (timed_search) {
         time_check -= 1;
         if (time_check == 0) {
@@ -106,7 +106,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, a:
     var alpha = a;
     const beta = b;
 
-    if (depth == 0) {
+    if (depth <= 0) {
         return quiesce(board, moveList, alpha, beta);
     }
     if (ply > max_ply - 1) {
@@ -120,35 +120,51 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, a:
         enablePVScoring(&moves);
     }
     if (moves.items.len > 0) try sortMoves(&moves, board);
+    const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
+    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
     if (moves.items.len == 0) {
-        const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
-        const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
         if (board.isSquareAttacked(king_square, board.sideToMove) > 0) {
             return -1000001;
         } else {
             return 0;
         }
     }
+    var moves_searched: u16 = 0;
 
     for (0..moves.items.len) |m| {
         if (stop_search) break;
         nodes += 1;
         ply += 1;
         var board_copy = board.*;
-        const move = moves.items[m];
+        var move = moves.items[m];
         const result = mv.makeMove(move, &board_copy, board_copy.sideToMove);
         if (!result) {
             ply -= 1;
             continue;
         }
-        if (m == 0) {
-            score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+
+        if (moves_searched >= 4 and
+            ply >= 3 and
+            !move.isCapture and
+            board.isSquareAttacked(king_square, board.sideToMove) == 0 and
+            !move.isPromotion())
+        {
+            score = -(try negaScout(&board_copy, moveList, depth - 2, -alpha - 1, -alpha));
         } else {
-            score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
-            if (score > alpha and score < beta) {
-                score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -score));
+            score = alpha + 1;
+        }
+
+        if (score > alpha) {
+            if (m == 0) {
+                score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+            } else {
+                score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
+                if (score > alpha and score < beta) {
+                    score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -score));
+                }
             }
         }
+        moves_searched += 1;
 
         ply -= 1;
 
