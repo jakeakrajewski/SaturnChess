@@ -268,6 +268,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         if (std.mem.eql(u8, next_string.?, "depth")) {
             next_string = split.next();
             timed_search = false;
+            if (next_string == null) break;
             if (next_string) |d| {
                 depth = try std.fmt.parseInt(u8, d, 10);
             }
@@ -275,6 +276,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         if (std.mem.eql(u8, next_string.?, "wtime")) {
             timed_search = true;
             next_string = split.next();
+            if (next_string == null) break;
             if (next_string) |time| {
                 white_time = try std.fmt.parseInt(i64, time, 10);
             }
@@ -282,18 +284,21 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
 
         if (std.mem.eql(u8, next_string.?, "btime")) {
             next_string = split.next();
+            if (next_string == null) break;
             if (next_string) |time| {
                 black_time = try std.fmt.parseInt(i64, time, 10);
             }
         }
         if (std.mem.eql(u8, next_string.?, "winc")) {
             next_string = split.next();
+            if (next_string == null) break;
             if (next_string) |num| {
                 white_increment = try std.fmt.parseInt(i64, num, 10);
             }
         }
         if (std.mem.eql(u8, next_string.?, "binc")) {
             next_string = split.next();
+            if (next_string == null) break;
             if (next_string) |num| {
                 black_increment = try std.fmt.parseInt(i64, num, 10);
             }
