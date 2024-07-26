@@ -115,13 +115,28 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     var moves = std.ArrayList(mv.Move).init(moveList.allocator);
     defer moves.deinit();
     var score = alpha;
+
+    const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
+    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
+    //Null Move Pruning
+    if (depth >= 3 and
+        board.isSquareAttacked(king_square, board.sideToMove) == 0 and
+        ply > 0)
+    {
+        var null_copy = board.*;
+        null_copy.sideToMove = if (null_copy.sideToMove == 1) 0 else 1;
+        null_copy.enPassantSquare = 0;
+        const temp_score = -(try negaScout(&null_copy, moveList, depth - 3, -beta, -beta + 1));
+        if (temp_score >= beta) {
+            return beta;
+        }
+    }
+
     try mv.generateMoves(&moves, board, board.sideToMove);
     if (follow_pv == 1) {
         enablePVScoring(&moves);
     }
     if (moves.items.len > 0) try sortMoves(&moves, board);
-    const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
-    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
     if (moves.items.len == 0) {
         if (board.isSquareAttacked(king_square, board.sideToMove) > 0) {
             return -1000001;
