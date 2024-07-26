@@ -14,6 +14,8 @@ var black_time: i64 = 0;
 var white_increment: i64 = 0;
 var black_increment: i64 = 0;
 var timed_search: bool = true;
+var time_allowance: i64 = -1;
+var moves_to_go: i16 = -1;
 
 pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -97,7 +99,6 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
 
     if (notation.len == 5) {
         const promo_piece = notation[4];
-        // if (promo_piece == 'q' or promo_piece == 'r' or promo_piece == 'b' or promo_piece == 'n') {
         switch (promo_piece) {
             'N', 'n' => {
                 promotion = .N;
@@ -115,7 +116,6 @@ pub fn parseMove(notation: []const u8, board: brd.Board) ?mv.Move {
                 promotion = .X;
             },
         }
-        // }
     }
     const piece_board = @as(u64, 1) << from_square;
     var piece: brd.Pieces = undefined;
@@ -303,6 +303,13 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
                 black_increment = try std.fmt.parseInt(i64, num, 10);
             }
         }
+        if (std.mem.eql(u8, next_string.?, "movestogo")) {
+            next_string = split.next();
+            if (next_string == null) break;
+            if (next_string) |num| {
+                moves_to_go = try std.fmt.parseInt(i16, num, 10);
+            }
+        }
         next_string = split.next();
     }
 
@@ -312,8 +319,12 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     defer list.deinit();
     const remaining_time = if (board.sideToMove == 0) white_time else black_time;
     const increment = if (board.sideToMove == 0) white_increment else black_increment;
-    var time_allowance: i64 = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
     if (timed_search) {
+        if (moves_to_go > -1) {
+            time_allowance = @intCast(@divTrunc(remaining_time, moves_to_go) + @divTrunc(increment, 2));
+        } else {
+            time_allowance = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
+        }
         if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
         if (time_allowance < 0) time_allowance = 100;
         std.debug.print("\nTime Allowance: {}\n", .{time_allowance});
