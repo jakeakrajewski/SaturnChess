@@ -160,7 +160,9 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             ply -= 1;
             continue;
         }
-
+				if (moves_searched == 0) {
+					score = -(try negascout(&board_copy, moveList, depth - 1, -beta, -alpha));
+				} else {
         if (moves_searched >= 4 and
             ply >= 3 and
             !move.isCapture and
@@ -182,6 +184,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
                 }
             }
         }
+				}
         moves_searched += 1;
 
         ply -= 1;
