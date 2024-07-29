@@ -10,6 +10,7 @@ const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 const eval = @import("Evaluate.zig");
 const builtin = @import("builtin");
+const zob = @import("Zobrist.zig");
 
 pub fn main() !void {
     try map.initializeAttackTables();

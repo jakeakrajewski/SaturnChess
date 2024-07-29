@@ -5,6 +5,7 @@ const bit = @import("BitManipulation.zig");
 
 pub const Castle = enum(u4) { N = 0, WK = 1, WQ = 2, BK = 4, BQ = 8 };
 pub const Pieces = enum(u4) { P = 0, N = 1, B = 2, R = 3, Q = 4, K = 5, p = 6, n = 7, b = 8, r = 9, q = 10, k = 11 };
+pub const piece_array: [12]Pieces = [12]Pieces{ .P, .N, .B, .R, .Q, .K, .p, .n, .b, .r, .q, .k };
 
 pub fn PieceFromString(piece: u8) Pieces {
     return switch (piece) {
@@ -40,6 +41,7 @@ pub const Board = struct {
     sideToMove: u1,
     enPassantSquare: u64,
     castle: u4,
+    hashKey: u64 = 0,
 
     pub fn bPieces(self: *Board) u64 {
         return self.bPawns | self.bKnights | self.bBishops | self.bRooks | self.bQueens | self.bKing;

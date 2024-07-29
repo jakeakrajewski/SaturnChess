@@ -1,6 +1,7 @@
 const std = @import("std");
 const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
+const zob = @import("Zobrist.zig");
 
 const Square = sqr.Square;
 
@@ -419,4 +420,5 @@ pub fn initializeAttackTables() !void {
     try generateLeaperAttacks();
     initRookAttacks();
     initBishopAttacks();
+    zob.initHashKeys();
 }

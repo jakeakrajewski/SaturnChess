@@ -3,6 +3,7 @@ const brd = @import("Board.zig");
 const map = @import("Maps.zig");
 const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
+const zob = @import("Zobrist.zig");
 
 pub var pin_mask: u64 = 0;
 pub var check_mask: u64 = 0;
@@ -657,5 +658,7 @@ pub inline fn makeMove(move: Move, b: *brd.Board, s: u1) bool {
         return false;
     }
     board.sideToMove = ~side;
+    zob.generateHashKey(board);
+
     return true;
 }

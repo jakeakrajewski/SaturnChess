@@ -4,6 +4,7 @@ const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
 const std = @import("std");
 const eval = @import("Evaluate.zig");
+const zob = @import("Zobrist.zig");
 
 const max_ply = 64;
 var nodes: i64 = 0;
@@ -21,6 +22,7 @@ var time_allowance: i64 = 0;
 var stop_search = false;
 var timed_search = false;
 var aspiration_window_adjustment = 50;
+var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
     const start_time = std.time.milliTimestamp();
@@ -32,6 +34,13 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
     time_allowance = time;
     stop_search = false;
 
+    // place this at inititalization
+    // for (0..transposition_tables.len) |t| {
+    //     transposition_tables[t].key = 0;
+    //     transposition_tables[t].depth = 0;
+    //     transposition_tables[t].flags = 0;
+    //     transposition_tables[t].score = 0;
+    // }
     for (&killer_moves) |*plyMoves| {
         @memset(plyMoves, mv.FromU24(0));
     }
@@ -105,6 +114,16 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             }
         }
     }
+
+    var hash_flag: u2 = 1;
+
+    var score = a;
+    // var score = zob.probeTT(board.*, &transposition_tables, depth, a, b);
+    // if (ply > 0 and score != 100000) {
+    //     pv_length[ply] = ply;
+    //     return score;
+    // }
+
     pv_length[ply] = ply;
     var alpha = a;
     const beta = b;
@@ -117,7 +136,6 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     }
     var moves = std.ArrayList(mv.Move).init(moveList.allocator);
     defer moves.deinit();
-    var score = alpha;
 
     const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
@@ -128,9 +146,13 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         !eval.isEndGame(board.*))
     {
         var null_copy = board.*;
+        ply += 1;
         null_copy.sideToMove = if (null_copy.sideToMove == 1) 0 else 1;
         null_copy.enPassantSquare = 0;
+        null_copy.hashKey ^= zob.side_key;
+        if (board.enPassantSquare != 0) null_copy.hashKey ^= zob.enpassant_keys[bit.leastSignificantBit(board.enPassantSquare)];
         const temp_score = -(try negaScout(&null_copy, moveList, depth - 3, -beta, -beta + 1));
+        ply -= 1;
         if (temp_score >= beta) {
             return beta;
         }
@@ -187,12 +209,12 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         ply -= 1;
 
         if (score > alpha) {
+            hash_flag = 0;
             if (!move.isCapture) {
                 history_moves[move.target][@intFromEnum(move.piece)] += depth;
             }
 
             pv_table[ply][ply] = move;
-
             for (ply + 1..@intCast(pv_length[ply + 1])) |next_ply| {
                 pv_table[ply][next_ply] = pv_table[ply + 1][next_ply];
             }
@@ -202,14 +224,17 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             alpha = score;
         }
         if (score >= beta) {
+            zob.writeTT(board.*, &transposition_tables, beta, 2, depth);
             if (!move.isCapture) {
                 killer_moves[ply][1] = killer_moves[ply][0];
                 killer_moves[ply][0] = move;
             }
+
             break;
         }
     }
 
+    zob.writeTT(board.*, &transposition_tables, alpha, hash_flag, depth);
     return alpha;
 }
 
@@ -227,6 +252,9 @@ fn quiesce(board: *brd.Board, moveList: *std.ArrayList(mv.Move), alpha: i64, bet
     }
     var a = alpha;
     const ev = eval.evaluate(board.*);
+    if (ply > max_ply - 1) {
+        return ev;
+    }
     if (ev >= beta) return beta;
     if (ev > a) a = ev;
     var moves = std.ArrayList(mv.Move).init(moveList.allocator);
@@ -250,7 +278,9 @@ fn quiesce(board: *brd.Board, moveList: *std.ArrayList(mv.Move), alpha: i64, bet
         }
         score = -(try quiesce(&b, moveList, -beta, -a));
         ply -= 1;
-        if (score > a) a = score;
+        if (score > a) {
+            a = score;
+        }
         if (score >= beta) break;
     }
 
