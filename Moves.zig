@@ -416,7 +416,7 @@ pub inline fn castleMoves() !void {
     }
 }
 
-pub const Move = struct {
+pub const Move = packed struct {
     source: u6,
     target: u6,
     piece: brd.Pieces,

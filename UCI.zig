@@ -25,7 +25,7 @@ pub fn uciLoop() !void {
 
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(fen.start_position, &board);
-    var buffer = try allocator.alloc(u8, 1024);
+    var buffer = try allocator.alloc(u8, 2048);
 
     defer allocator.free(buffer);
 

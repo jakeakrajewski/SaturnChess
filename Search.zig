@@ -124,7 +124,8 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     //Null Move Pruning
     if (depth >= 3 and
         board.isSquareAttacked(king_square, board.sideToMove) == 0 and
-        ply > 0)
+        ply > 0 and
+        !eval.isEndGame(board.*))
     {
         var null_copy = board.*;
         null_copy.sideToMove = if (null_copy.sideToMove == 1) 0 else 1;
@@ -160,31 +161,27 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             ply -= 1;
             continue;
         }
-				if (moves_searched == 0) {
-					score = -(try negascout(&board_copy, moveList, depth - 1, -beta, -alpha));
-				} else {
-        if (moves_searched >= 4 and
-            ply >= 3 and
-            !move.isCapture and
-            board.isSquareAttacked(king_square, board.sideToMove) == 0 and
-            !move.isPromotion())
-        {
-            score = -(try negaScout(&board_copy, moveList, depth - 2, -alpha - 1, -alpha));
+        if (moves_searched == 0) {
+            score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
         } else {
-            score = alpha + 1;
-        }
-
-        if (score > alpha) {
-            if (m == 0) {
-                score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+            if (moves_searched >= 4 and
+                ply >= 3 and
+                !move.isCapture and
+                board.isSquareAttacked(king_square, board.sideToMove) == 0 and
+                !move.isPromotion())
+            {
+                score = -(try negaScout(&board_copy, moveList, depth - 2, -alpha - 1, -alpha));
             } else {
+                score = alpha + 1;
+            }
+
+            if (score > alpha) {
                 score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
                 if (score > alpha and score < beta) {
-                    score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -score));
+                    score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
                 }
             }
         }
-				}
         moves_searched += 1;
 
         ply -= 1;
@@ -292,7 +289,10 @@ fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
 fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     var score: i32 = 0;
     if (score_pv == 1 and pv_table[0][ply].Equals(move)) {
+        std.debug.print("PV Move Ply {}: ", .{ply});
         score_pv = 0;
+        printMoveDebug(move);
+        std.debug.print("\n", .{});
         return 20000;
     }
     if (move.isCapture) {
@@ -344,6 +344,4 @@ fn printMove(move: mv.Move) !void {
 }
 fn printMoveDebug(move: mv.Move) void {
     const source = try sqr.Square.FromIndex(move.source);
-    const target = try sqr.Square.FromIndex(move.target);
-    std.debug.print("{s}{s} ", .{ source.toString(), target.toString() });
-}
+    const targe
