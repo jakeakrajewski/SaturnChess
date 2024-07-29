@@ -344,4 +344,6 @@ fn printMove(move: mv.Move) !void {
 }
 fn printMoveDebug(move: mv.Move) void {
     const source = try sqr.Square.FromIndex(move.source);
-    const targe
+    const target = try sqr.Square.FromIndex(move.target);
+    std.debug.print("{s}{s} ", .{ source.toString(), target.toString() });
+}

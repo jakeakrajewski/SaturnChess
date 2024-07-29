@@ -234,4 +234,69 @@ const king_psv: [64]i64 = .{
   -30, -40, -40, -50, -50, -40, -40, -30,
   -30, -40, -40, -50, -50, -40, -40, -30,
   -20, -30, -30, -40, -40, -30, -30, -20,
-  -10, -20
+  -10, -20, -20, -20, -20, -20, -20, -10,
+   20,  20,   0,   0,   0,   0,  20,  20,
+   20,  30,  10,   0,   0,  10,  30,  20
+};
+
+const king_end_game_psv: [64]i64 = .{
+    -50,-40,-30,-20,-20,-30,-40,-50,
+    -30,-20,-10,  0,  0,-10,-20,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-30,  0,  0,  0,  0,-30,-30,
+    -50,-30,-30,-30,-30,-30,-30,-50
+};
+
+const black_king_psv: [64]i64 = .{
+   20,  30,  10,   0,   0,  10,  30,  20,
+   20,  20,   0,   0,   0,   0,  20,  20,
+  -10, -20, -20, -20, -20, -20, -20, -10,
+  -20, -30, -30, -40, -40, -30, -30, -20,
+  -30, -40, -40, -50, -50, -40, -40, -30,
+  -30, -40, -40, -50, -50, -40, -40, -30,
+  -30, -40, -40, -50, -50, -40, -40, -30,
+  -30, -40, -40, -50, -50, -40, -40, -30
+};
+
+const black_king_end_game_psv: [64]i64 = .{
+    -50,-30,-30,-30,-30,-30,-30,-50,
+    -30,-30,  0,  0,  0,  0,-30,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-20,-10,  0,  0,-10,-20,-30,
+    -50,-40,-30,-20,-20,-30,-40,-50
+};
+
+fn scorePawns(pawns: u64) i64 {
+    var score: i64 = 0;
+    score -= 5 * (bit.bitCount(getIsolatedPawns(pawns)));
+    score -= 10 * (bit.bitCount(getDoubledPawns(pawns)));
+    score += 1 * (bit.bitCount(getConnectedPawns(pawns)));
+    return score;
+}
+
+fn getIsolatedPawns(pawns: u64) u64 {
+    const leftAdjacent = (pawns >> 1) & 0x7f7f7f7f7f7f7f7f;
+    const rightAdjacent = (pawns << 1) & 0xfefefefefefefefe;
+    const adjacentPawns = leftAdjacent | rightAdjacent;
+
+    return pawns & ~adjacentPawns;
+}
+
+fn getDoubledPawns(pawns: u64) u64 {
+    const shiftedPawns = pawns << 8;
+    const doubledPawns = pawns & shiftedPawns;
+    return doubledPawns;
+}
+
+fn getConnectedPawns(pawns: u64) u64 {
+    const leftAdjacent = (pawns >> 1) & 0x7f7f7f7f7f7f7f7f;
+    const rightAdjacent = (pawns << 1) & 0xfefefefefefefefe;
+    const connectedPawns = pawns & (leftAdjacent | rightAdjacent);
+    return connectedPawns;
+}
