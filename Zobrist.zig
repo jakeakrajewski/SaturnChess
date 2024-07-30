@@ -67,17 +67,21 @@ pub const TranspositionTable = struct {
     score: i64,
 };
 
-pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i8, alpha: i64, beta: i64) i64 {
+pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i8, alpha: i64, beta: i64, ply: u16) i64 {
     const entry = table[board.hashKey % hash_size];
     if (entry.key == board.hashKey) {
         if (entry.depth >= depth) {
+            var score: i64 = entry.score;
+            if (score < -ser.mate_score) score += ply;
+            if (score > ser.mate_score) score -= ply;
+
             if (entry.flags == 0) {
-                return entry.score;
+                return score;
             }
-            if (entry.flags == 1 and entry.score <= alpha) {
+            if (entry.flags == 1 and score <= alpha) {
                 return alpha;
             }
-            if (entry.flags == 2 and entry.score >= beta) {
+            if (entry.flags == 2 and score >= beta) {
                 return beta;
             }
         }
@@ -85,11 +89,14 @@ pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i
     return 100000;
 }
 
-pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i64, flags: u2, depth: i8) void {
+pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i64, flags: u2, depth: i8, ply: u16) void {
+    var adjusted_score = score;
     var entry = table[board.hashKey % hash_size];
     if (entry.depth > depth) return;
+    if (adjusted_score < -ser.mate_score) adjusted_score -= ply;
+    if (adjusted_score > ser.mate_score) adjusted_score += ply;
     entry.key = board.hashKey;
-    entry.score = score;
+    entry.score = adjusted_score;
     entry.depth = depth;
     entry.flags = flags;
     table[board.hashKey % hash_size] = entry;

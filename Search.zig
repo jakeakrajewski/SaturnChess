@@ -7,6 +7,7 @@ const eval = @import("Evaluate.zig");
 const zob = @import("Zobrist.zig");
 const uci = @import("UCI.zig");
 
+pub const inifintity: i64 = 50000;
 const max_ply = 64;
 var nodes: i64 = 0;
 var killer_moves: [max_ply][2]mv.Move = undefined;
@@ -25,8 +26,11 @@ var timed_search = false;
 var aspiration_window_adjustment = 50;
 var positions_reached: [max_ply]u64 = undefined;
 pub var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
+pub const mate_value: i64 = 49000;
+pub const mate_score: i64 = 48000;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
+    const stdout = std.io.getStdOut().writer();
     const start_time = std.time.milliTimestamp();
     timed_search = timedSearch;
     nodes = 0;
@@ -63,8 +67,8 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         const score = try negaScout(b, moveList, @intCast(d), alpha, beta);
 
         if (score <= alpha or score >= beta) {
-            alpha = -50000;
-            beta = 50000;
+            alpha = -inifintity;
+            beta = inifintity;
             continue;
         }
 
@@ -73,11 +77,18 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
 
         const end_time = std.time.milliTimestamp();
         const elapsed_time: i64 = end_time - start_time;
-        try std.io.getStdOut().writer().print("info score cp {} depth {} nodes {} time {} pv ", .{ score, d, nodes, elapsed_time });
+        if (score > -mate_value and score < -mate_score) {
+            try stdout.print("info score mate {} depth {} nodes {} time {} pv ", .{ @divFloor(-(score + mate_value), 2) - 1, d, nodes, elapsed_time });
+        } else if (score > mate_score and score < mate_value) {
+            try stdout.print("info score mate {} depth {} nodes {} time {} pv ", .{ @divFloor((mate_value - score), 2) + 1, d, nodes, elapsed_time });
+        } else {
+            try stdout.print("info score cp {} depth {} nodes {} time {} pv ", .{ score, d, nodes, elapsed_time });
+        }
+
         for (0..@intCast(pv_length[ply])) |count| {
             try printMove(pv_table[0][count]);
         }
-        try std.io.getStdOut().writer().print("\n", .{});
+        try stdout.print("\n", .{});
     }
     if (stop_search) {
         return prev_pv_table[0][0];
@@ -114,8 +125,11 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
     var hash_flag: u2 = 1;
 
-    var score = zob.probeTT(board.*, &transposition_tables, depth, a, b);
-    if (ply > 0 and score != 100000) {
+    //determine if current node is PV
+    const is_pv_node = b - a > 1;
+
+    var score = zob.probeTT(board.*, &transposition_tables, depth, a, b, ply);
+    if (ply > 0 and score != 100000 and !is_pv_node) {
         pv_length[ply] = ply;
         return score;
     }
@@ -161,7 +175,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     if (moves.items.len > 0) try sortMoves(&moves, board);
     if (moves.items.len == 0) {
         if (board.isSquareAttacked(king_square, board.sideToMove) > 0) {
-            return -1000001;
+            return -mate_value + ply;
         } else {
             return 0;
         }
@@ -222,7 +236,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             alpha = score;
         }
         if (score >= beta) {
-            zob.writeTT(board.*, &transposition_tables, beta, 2, depth);
+            zob.writeTT(board.*, &transposition_tables, beta, 2, depth, ply);
             if (!move.isCapture) {
                 killer_moves[ply][1] = killer_moves[ply][0];
                 killer_moves[ply][0] = move;
@@ -232,7 +246,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
     }
 
-    zob.writeTT(board.*, &transposition_tables, alpha, hash_flag, depth);
+    zob.writeTT(board.*, &transposition_tables, alpha, hash_flag, depth, ply);
     return alpha;
 }
 
@@ -317,10 +331,7 @@ fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
 fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     var score: i32 = 0;
     if (score_pv == 1 and pv_table[0][ply].Equals(move)) {
-        std.debug.print("PV Move Ply {}: ", .{ply});
         score_pv = 0;
-        printMoveDebug(move);
-        std.debug.print("\n", .{});
         return 20000;
     }
     if (move.isCapture) {

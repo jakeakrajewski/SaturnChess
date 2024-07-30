@@ -19,6 +19,7 @@ pub inline fn evaluate(board: brd.Board) i64 {
     score += scorePawns(board.wPawns) - scorePawns(board.bPawns);
     score += materialScore(board);
     score += pieceSquareScore(board);
+    score += scorePieces(board);
     return if (board.sideToMove == 0) score else -score;
 }
 
@@ -299,4 +300,65 @@ fn getConnectedPawns(pawns: u64) u64 {
     const rightAdjacent = (pawns << 1) & 0xfefefefefefefefe;
     const connectedPawns = pawns & (leftAdjacent | rightAdjacent);
     return connectedPawns;
+}
+
+fn scorePieces(board: brd.Board) i64{
+    var score: i64 = 0;
+    score += sliderMobility(board);
+    score += kingSafety(board);
+
+    return score;
+}
+ 
+fn sliderMobility(board: brd.Board) i64 {
+    var score: i64 = 0;
+    var b = board;
+    var white_bishops = board.wBishops;
+    var white_rooks = board.wRooks;
+    var white_queens = board.wQueens;
+    var black_bishops = board.bBishops;
+    var black_rooks = board.bRooks;
+    var black_queens = board.bQueens;
+    
+    while (white_bishops > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(white_bishops));
+         bit.popBit(&white_bishops, (@intCast(square)));
+         score += 2 * (bit.bitCount(map.getBishopAttacks(square, b.allPieces())));
+    }
+    while (white_rooks > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(white_rooks));
+         bit.popBit(&white_rooks, (@intCast(square)));
+         score += 2 * (bit.bitCount(map.getRookAttacks(square, b.allPieces())));
+    }
+    while (white_queens > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(white_queens));
+         bit.popBit(&white_queens, (@intCast(square)));
+         score += 2 * (bit.bitCount(map.generateQueenAttacks(square, b.allPieces())));
+    }
+    while (black_bishops > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(black_bishops));
+         bit.popBit(&black_bishops, (@intCast(square)));
+         score -= 2 * (bit.bitCount(map.getBishopAttacks(square, b.allPieces())));
+    }
+    while (black_rooks > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(black_rooks));
+         bit.popBit(&black_rooks, (@intCast(square)));
+         score -= 2 * (bit.bitCount(map.getRookAttacks(square, b.allPieces())));
+    }
+    while (black_queens > 0) {
+         const square: u6 = @intCast(bit.leastSignificantBit(black_queens));
+         bit.popBit(&black_queens, (@intCast(square)));
+         score -= 2 * (bit.bitCount(map.generateQueenAttacks(square, b.allPieces())));
+    }
+
+    return score;
+}
+
+fn kingSafety(board: brd.Board) i64 {
+    var b = board;
+    const white_king: usize = @intCast(bit.leastSignificantBit(board.wKing));
+    const black_king: usize = @intCast(bit.leastSignificantBit(board.bKing));
+    const white_safety = bit.bitCount(map.king_attacks[white_king] & b.wPieces());
+    const black_safety = bit.bitCount(map.king_attacks[black_king] & b.bPieces());
+    return (@as(i16, white_safety) * 1) - (@as(i16, black_safety) * 1);
 }
