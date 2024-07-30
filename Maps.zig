@@ -422,10 +422,5 @@ pub fn initializeAttackTables() !void {
     initRookAttacks();
     initBishopAttacks();
     zob.initHashKeys();
-    for (0..ser.transposition_tables.len) |t| {
-        ser.transposition_tables[t].key = 0;
-        ser.transposition_tables[t].depth = 0;
-        ser.transposition_tables[t].flags = 0;
-        ser.transposition_tables[t].score = 0;
-    }
+    zob.clearTT();
 }

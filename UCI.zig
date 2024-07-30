@@ -7,6 +7,7 @@ const fen = @import("FenStrings.zig");
 const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 const builtin = @import("builtin");
+const zob = @import("Zobrist.zig");
 
 var depth: u8 = 64;
 var white_time: i64 = 0;
@@ -16,6 +17,8 @@ var black_increment: i64 = 0;
 var timed_search: bool = true;
 var time_allowance: i64 = -1;
 var moves_to_go: i16 = -1;
+pub var positions: [200]u64 = undefined;
+var half_turn: u8 = 0;
 
 pub fn uciLoop() !void {
     try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -25,6 +28,7 @@ pub fn uciLoop() !void {
 
     var board: brd.Board = undefined;
     brd.setBoardFromFEN(fen.start_position, &board);
+    zob.generateHashKey(&board);
     var buffer = try allocator.alloc(u8, 2048);
 
     defer allocator.free(buffer);
@@ -55,6 +59,9 @@ pub fn uciLoop() !void {
             } else if (std.mem.eql(u8, input, "isready")) {
                 try std.io.getStdOut().writer().print("readyok\n", .{});
             } else if (std.mem.eql(u8, input, "ucinewgame")) {
+                zob.clearTT();
+                clearPositions();
+                half_turn = 0;
                 try position(&board, "position startpos");
             } else if (std.mem.eql(u8, input, "uci")) {
                 try std.io.getStdOut().writer().print("id name Saturn\n", .{});
@@ -171,7 +178,10 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
     if (command2 == null) return;
 
     if (std.mem.eql(u8, command2.?, "startpos")) {
+        clearPositions();
+        half_turn = 0;
         brd.setBoardFromFEN(fen.start_position, board);
+        zob.generateHashKey(board);
 
         var still_moves = true;
 
@@ -187,6 +197,8 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
                         if (!result) {
                             @panic("Invalid move received in position command");
                         }
+                        positions[half_turn] = board.hashKey;
+                        half_turn += 1;
                     }
                 } else {
                     still_moves = false;
@@ -194,6 +206,8 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
             }
         }
     } else if (std.mem.eql(u8, command2.?, "fen")) {
+        clearPositions();
+        half_turn = 0;
         const pos = split.next().?;
         const side = split.next().?;
         const castles = split.next().?;
@@ -208,6 +222,7 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
 
         const fenString = try std.fmt.bufPrint(buffer, "{s} {s} {s} {s} {s} {s}", .{ pos, side, castles, ep, majorClock, minorClock });
         brd.setBoardFromFEN(fenString, board);
+        zob.generateHashKey(board);
 
         var still_moves = true;
 
@@ -223,6 +238,8 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
                         if (!result) {
                             @panic("Invalid move received in position command");
                         }
+                        positions[half_turn] = board.hashKey;
+                        half_turn += 1;
                     }
                 } else {
                     still_moves = false;
@@ -401,4 +418,10 @@ pub fn printTestBoards(bitboard: *brd.Board) void {
     const s = sqr.Square.toIndex(.D3);
     const attacked = bitboard.isSquareAttacked(s, 1);
     std.debug.print("Square attacked: {}", .{attacked});
+}
+
+pub fn clearPositions() void {
+    for (0..half_turn) |p| {
+        positions[p] = 0;
+    }
 }

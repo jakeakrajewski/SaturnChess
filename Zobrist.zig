@@ -8,6 +8,7 @@ const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 const builtin = @import("builtin");
 const rand = @import("Rand.zig");
+const ser = @import("Search.zig");
 
 pub var piece_keys: [12][64]u64 = undefined;
 pub var enpassant_keys: [64]u64 = undefined;
@@ -92,4 +93,13 @@ pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i
     entry.depth = depth;
     entry.flags = flags;
     table[board.hashKey % hash_size] = entry;
+}
+
+pub fn clearTT() void {
+    for (0..ser.transposition_tables.len) |t| {
+        ser.transposition_tables[t].key = 0;
+        ser.transposition_tables[t].depth = 0;
+        ser.transposition_tables[t].flags = 0;
+        ser.transposition_tables[t].score = 0;
+    }
 }

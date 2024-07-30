@@ -5,6 +5,7 @@ const sqr = @import("Square.zig");
 const std = @import("std");
 const eval = @import("Evaluate.zig");
 const zob = @import("Zobrist.zig");
+const uci = @import("UCI.zig");
 
 const max_ply = 64;
 var nodes: i64 = 0;
@@ -22,6 +23,7 @@ var time_allowance: i64 = 0;
 var stop_search = false;
 var timed_search = false;
 var aspiration_window_adjustment = 50;
+var positions_reached: [max_ply]u64 = undefined;
 pub var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
@@ -44,6 +46,7 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         @memset(pv, mv.FromU24(0));
     }
     @memset(&pv_length, 0);
+    @memset(&positions_reached, 0);
 
     const b = board;
     ply = 0;
@@ -76,7 +79,6 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         }
         try std.io.getStdOut().writer().print("\n", .{});
     }
-
     if (stop_search) {
         return prev_pv_table[0][0];
     } else {
@@ -107,6 +109,8 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             }
         }
     }
+
+    if (countOccurences(&positions_reached, board.hashKey) + countOccurences(&uci.positions, board.hashKey) > 2) return 0;
 
     var hash_flag: u2 = 1;
 
@@ -171,6 +175,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         var board_copy = board.*;
         var move = moves.items[m];
         const result = mv.makeMove(move, &board_copy, board_copy.sideToMove);
+        positions_reached[ply] = board_copy.hashKey;
         if (!result) {
             ply -= 1;
             continue;
@@ -198,6 +203,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
         moves_searched += 1;
 
+        positions_reached[ply] = 0;
         ply -= 1;
 
         if (score > alpha) {
@@ -368,4 +374,11 @@ fn printMoveDebug(move: mv.Move) void {
     const source = try sqr.Square.FromIndex(move.source);
     const target = try sqr.Square.FromIndex(move.target);
     std.debug.print("{s}{s} ", .{ source.toString(), target.toString() });
+}
+fn countOccurences(list: []u64, val: u64) u8 {
+    var count: u8 = 0;
+    for (0..list.len) |i| {
+        if (list[i] == val) count += 1;
+    }
+    return count;
 }
