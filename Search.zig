@@ -22,7 +22,7 @@ var time_allowance: i64 = 0;
 var stop_search = false;
 var timed_search = false;
 var aspiration_window_adjustment = 50;
-var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
+pub var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
     const start_time = std.time.milliTimestamp();
@@ -34,13 +34,6 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
     time_allowance = time;
     stop_search = false;
 
-    // place this at inititalization
-    // for (0..transposition_tables.len) |t| {
-    //     transposition_tables[t].key = 0;
-    //     transposition_tables[t].depth = 0;
-    //     transposition_tables[t].flags = 0;
-    //     transposition_tables[t].score = 0;
-    // }
     for (&killer_moves) |*plyMoves| {
         @memset(plyMoves, mv.FromU24(0));
     }
@@ -117,12 +110,11 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
     var hash_flag: u2 = 1;
 
-    var score = a;
-    // var score = zob.probeTT(board.*, &transposition_tables, depth, a, b);
-    // if (ply > 0 and score != 100000) {
-    //     pv_length[ply] = ply;
-    //     return score;
-    // }
+    var score = zob.probeTT(board.*, &transposition_tables, depth, a, b);
+    if (ply > 0 and score != 100000) {
+        pv_length[ply] = ply;
+        return score;
+    }
 
     pv_length[ply] = ply;
     var alpha = a;
@@ -139,7 +131,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
     const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
-    //Null Move Pruning
+    // Null Move Pruning
     if (depth >= 3 and
         board.isSquareAttacked(king_square, board.sideToMove) == 0 and
         ply > 0 and
@@ -230,7 +222,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
                 killer_moves[ply][0] = move;
             }
 
-            break;
+            return beta;
         }
     }
 

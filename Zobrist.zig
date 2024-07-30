@@ -86,6 +86,7 @@ pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i
 
 pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i64, flags: u2, depth: i8) void {
     var entry = table[board.hashKey % hash_size];
+    if (entry.depth > depth) return;
     entry.key = board.hashKey;
     entry.score = score;
     entry.depth = depth;

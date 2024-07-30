@@ -2,6 +2,7 @@ const std = @import("std");
 const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
 const zob = @import("Zobrist.zig");
+const ser = @import("Search.zig");
 
 const Square = sqr.Square;
 
@@ -421,4 +422,10 @@ pub fn initializeAttackTables() !void {
     initRookAttacks();
     initBishopAttacks();
     zob.initHashKeys();
+    for (0..ser.transposition_tables.len) |t| {
+        ser.transposition_tables[t].key = 0;
+        ser.transposition_tables[t].depth = 0;
+        ser.transposition_tables[t].flags = 0;
+        ser.transposition_tables[t].score = 0;
+    }
 }
