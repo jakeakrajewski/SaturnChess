@@ -9,8 +9,8 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 
-const mid_game_material_score = []u16{ 100, 700, 800, 1200, 2500, 10000 };
-const end_game_material_score = []u16{ 200, 800, 900, 1300, 2700, 10000 };
+const mid_game_material_score = [6]u16{ 100, 700, 800, 1200, 2500, 10000 };
+const end_game_material_score = [6]u16{ 200, 800, 900, 1300, 2700, 10000 };
 const phase: f32 = 0.0;
 var end_game: bool = false;
 pub var board: brd.Board = undefined;
