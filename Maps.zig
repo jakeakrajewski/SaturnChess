@@ -35,8 +35,8 @@ pub fn getSquareFile(square: u6) u64 {
     return files[square % 8];
 }
 
-pub const DIAGONAL_A1H8: u64 = 9241421688590303745;
-pub const DIAGONAL_H1A8: u64 = 18049651735527936;
+pub const a1_diagonal: u64 = 9241421688590303745;
+pub const h1_diagonal: u64 = 18049651735527936;
 
 pub const EDGE_MASK: u64 = 18411139144890810879; // FILE_A | FILE_H | RANK_1 | RANK_8
 

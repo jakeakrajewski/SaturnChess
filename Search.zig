@@ -57,15 +57,20 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
 
     var alpha: i64 = -1000000;
     var beta: i64 = 1000000;
+
+    //Iterative Deepening
     for (1..depth + 1) |d| {
         if (timed_search) {
             const current_time = std.time.milliTimestamp();
             if (current_time - search_start_time_stamp > time_allowance) break;
         }
+
+        // Use pv_table from previous depth if search ends early
         prev_pv_table = pv_table;
         follow_pv = 1;
         var score = try negaScout(b, moveList, @intCast(d), alpha, beta);
 
+        // Aspiration Window Adjustments
         if (score <= alpha or score >= beta) {
             alpha = -inifintity;
             beta = inifintity;
@@ -122,13 +127,15 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
     }
 
+    // Detect Three Fold Repetition (Draw)
     if (countOccurences(&positions_reached, board.hashKey) + countOccurences(&uci.positions, board.hashKey) > 2) return 0;
 
     var hash_flag: u2 = 1;
 
-    //determine if current node is PV
+    // Determine if current node is PV
     const is_pv_node = b - a > 1;
 
+    // Search Transposition Tables For Current Position
     var score = zob.probeTT(board.*, &transposition_tables, depth, a, b, ply);
     if (ply > 0 and score != 100000 and !is_pv_node) {
         pv_length[ply] = ply;
@@ -139,6 +146,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     var alpha = a;
     const beta = b;
 
+    // Quiescence Search
     if (depth <= 0) {
         return quiesce(board, moveList, alpha, beta);
     }
@@ -150,7 +158,8 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
     const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
-    // Null Move Pruning
+
+    // Null Move Heuristic
     if (depth >= 3 and
         board.isSquareAttacked(king_square, board.sideToMove) == 0 and
         ply > 0 and
@@ -173,7 +182,11 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     if (follow_pv == 1) {
         enablePVScoring(&moves);
     }
+
+    // Move Ordering
     if (moves.items.len > 0) try sortMoves(&moves, board);
+
+    // Detect Checkmate or Stalemate
     if (moves.items.len == 0) {
         if (board.isSquareAttacked(king_square, board.sideToMove) > 0) {
             return -mate_value + ply;
@@ -195,6 +208,8 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             ply -= 1;
             continue;
         }
+
+        // Principal Variation (PV) Search
         if (moves_searched == 0) {
             score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
         } else {
@@ -216,6 +231,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
                 }
             }
         }
+
         moves_searched += 1;
 
         positions_reached[ply] = 0;
@@ -223,10 +239,13 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
         if (score > alpha) {
             hash_flag = 0;
+
+            // History Move Heuristics
             if (!move.isCapture) {
                 history_moves[move.target][@intFromEnum(move.piece)] += depth;
             }
 
+            // Update PV Table
             pv_table[ply][ply] = move;
             for (ply + 1..@intCast(pv_length[ply + 1])) |next_ply| {
                 pv_table[ply][next_ply] = pv_table[ply + 1][next_ply];
@@ -237,7 +256,10 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             alpha = score;
         }
         if (score >= beta) {
+            // Write Beta Cutoff To Transposition Tables
             zob.writeTT(board.*, &transposition_tables, beta, 2, depth, ply);
+
+            // Killer Move Heuristic
             if (!move.isCapture) {
                 killer_moves[ply][1] = killer_moves[ply][0];
                 killer_moves[ply][0] = move;

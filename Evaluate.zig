@@ -79,6 +79,7 @@ pub inline fn pawnSquareScore() i64 {
         const square: u6 = @intCast(bit.leastSignificantBit(white_pawns));
         bit.popBit(&white_pawns, (@intCast(square)));
         const rank = 7 - square / 8;
+        // Passed Pawns
         var passed_mask = map.getSquareFile(square);
         if (square % 8 > 0) passed_mask |= map.getSquareFile(square - 1);
         if (square % 8 < 7) passed_mask |= map.getSquareFile(square + 1);
@@ -86,12 +87,14 @@ pub inline fn pawnSquareScore() i64 {
         if (board.bPawns & passed_mask & board_ahead == 0) {
             score += passed_pawn_score[rank];
         }
+        // Piece Square Value
         score += pawn_psv[square];
     }
     while (black_pawns > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(black_pawns));
         bit.popBit(&black_pawns, (@intCast(square)));
         const rank = 7 - square / 8;
+        // Black Passed Pawns
         var passed_mask = map.getSquareFile(square);
         if (square % 8 > 0) passed_mask |= map.getSquareFile(square - 1);
         if (square % 8 < 7) passed_mask |= map.getSquareFile(square + 1);
@@ -99,6 +102,7 @@ pub inline fn pawnSquareScore() i64 {
         if (board.wPawns & passed_mask & board_ahead == 0) {
             score -= passed_pawn_score[7 - rank];
         }
+        // Black Piece Square Value
         score -= black_pawn_psv[square];
     }
 
@@ -284,41 +288,19 @@ fn getBackwardPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
     const isWhite: bool = side == 0;
 
     if (isWhite) {
-        // Shift enemy pawns up to check for attack coverage in front of the pawns
         const enemyAttacks = (enemyPawns >> 7 & notAFile) | (enemyPawns >> 8) | (enemyPawns >> 9 & notHFile);
-        // Shift own pawns to check for support coverage
         const ownLeft = (ownPawns >> 1) & notAFile;
         const ownRight = (ownPawns << 1) & notHFile;
         const unsupportedPawns = ownPawns & ~ownLeft & ~ownRight;
         const backwardPawns = unsupportedPawns & enemyAttacks;
         return backwardPawns;
     } else {
-        // Shift enemy pawns down to check for attack coverage in front of the pawns
         const enemyAttacks = (enemyPawns << 7 & notHFile) | (enemyPawns << 8) | (enemyPawns << 9 & notAFile);
-        // Shift own pawns to check for support coverage
         const ownLeft = (ownPawns >> 1) & notAFile;
         const ownRight = (ownPawns << 1) & notHFile;
         const unsupportedPawns = ownPawns & ~ownLeft & ~ownRight;
         const backwardPawns = unsupportedPawns & enemyAttacks;
         return backwardPawns;
-    }
-}
-
-fn getPassedPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
-    const notAFile: u64 = 0xfefefefefefefefe;
-    const notHFile: u64 = 0x7f7f7f7f7f7f7f7f;
-    const isWhite: bool = side == 0;
-
-    // For white pawns, they advance up the board (shift left)
-    if (isWhite) {
-        const enemyPawnsInFront = (enemyPawns | (enemyPawns << 1 & notAFile) | (enemyPawns >> 1 & notHFile)) << 8;
-        const enemyPawnsFurtherInFront = (enemyPawnsInFront | (enemyPawnsInFront << 8) | (enemyPawnsInFront << 16) | (enemyPawnsInFront << 24) | (enemyPawnsInFront << 32) | (enemyPawnsInFront << 40));
-        return ownPawns & ~enemyPawnsFurtherInFront;
-    } else {
-        // For black pawns, they advance down the board (shift right)
-        const enemyPawnsInFront = (enemyPawns | (enemyPawns << 1 & notAFile) | (enemyPawns >> 1 & notHFile)) >> 8;
-        const enemyPawnsFurtherInFront = (enemyPawnsInFront | (enemyPawnsInFront >> 8) | (enemyPawnsInFront >> 16) | (enemyPawnsInFront >> 24) | (enemyPawnsInFront >> 32) | (enemyPawnsInFront >> 40));
-        return ownPawns & ~enemyPawnsFurtherInFront;
     }
 }
 
@@ -326,65 +308,114 @@ fn scorePieces() i64 {
     var score: i64 = 0;
     var b = board;
 
+    const white_king_square: u6 = @intCast(bit.leastSignificantBit(board.wKing));
+    const black_king_square: u6 = @intCast(bit.leastSignificantBit(board.bKing));
+
     while (b.wKnights > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wKnights));
         bit.popBit(&b.wKnights, (@intCast(square)));
+        //Knight PSV
         score += knight_psv[square];
     }
     while (b.wBishops > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wBishops));
-        score += bishop_psv[square];
         bit.popBit(&b.wBishops, (@intCast(square)));
-        score += 1 * (bit.bitCount(map.getBishopAttacks(square, board.allPieces())));
+        // Bishop Targeting King Ring
+        const attack_mask = map.getBishopAttacks(square, board.allPieces());
+        if (attack_mask & map.king_attacks[black_king_square] > 0) score += 5;
+        // Bishop Mobility
+        score += 1 * (bit.bitCount(attack_mask));
+        // Bishop Piece Square Value
+        score += bishop_psv[square];
     }
     while (b.wRooks > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wRooks));
-        const file = map.getSquareFile(square);
-        score += rook_psv[square];
-        score += if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.wPawns == 0) 10 else 0;
         bit.popBit(&b.wRooks, (@intCast(square)));
-        score += 1 * (bit.bitCount(map.getRookAttacks(square, board.allPieces())));
+        // Rook Targeting King Ring
+        const attack_mask = map.getRookAttacks(square, board.allPieces());
+        if (attack_mask & map.king_attacks[black_king_square] > 0) score += 5;
+        // Rook on (Any) Queen File
+        const file = map.getSquareFile(square);
+        if (file & (board.wQueens | board.bQueens) > 0) score += 5;
+        // Rook on Semi-Open or Open File
+        score += if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.wPawns == 0) 10 else 0;
+        score += 1 * (bit.bitCount(attack_mask));
+        // Rook Piece Square Value
+        score += rook_psv[square];
     }
     while (b.wQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wQueens));
         bit.popBit(&b.wQueens, (@intCast(square)));
+        // Queen Piece Square Value
         score += 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
     }
     while (b.bKnights > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bKnights));
         bit.popBit(&b.bKnights, (@intCast(square)));
+        // Black Knight PSV
         score -= black_knight_psv[square];
     }
     while (b.bBishops > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bBishops));
-        score -= black_bishop_psv[square];
         bit.popBit(&b.bBishops, (@intCast(square)));
-        score -= 1 * (bit.bitCount(map.getBishopAttacks(square, board.allPieces())));
+        // Black Bishop Targeting King Ring
+        const attack_mask = map.getBishopAttacks(square, board.allPieces());
+        if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 5;
+        // Black Bishop Mobility
+        score -= 1 * (bit.bitCount(attack_mask));
+        // Black Bishop Piece Square Values
+        score -= black_bishop_psv[square];
     }
     while (b.bRooks > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bRooks));
-        score -= black_rook_psv[square];
-        const file = map.getSquareFile(square);
-        score -= if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.bPawns == 0) 10 else 0;
         bit.popBit(&b.bRooks, (@intCast(square)));
-        score -= 1 * (bit.bitCount(map.getRookAttacks(square, board.allPieces())));
+        // Black Rook Targeting King Ring
+        const attack_mask = map.getRookAttacks(square, board.allPieces());
+        if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 5;
+        // Black Rook on (Any) Queen File
+        const file = map.getSquareFile(square);
+        if (file & (board.wQueens | board.bQueens) > 0) score -= 5;
+        // Black Rook on Semi-Open or Open File
+        score -= if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.bPawns == 0) 10 else 0;
+        score -= 1 * (bit.bitCount(attack_mask));
+        // Black Rook Piece Square Value
+        score -= black_rook_psv[square];
     }
     while (b.bQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bQueens));
         bit.popBit(&b.bQueens, (@intCast(square)));
+        // Black Queen Piece Square Value
         score -= 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
     }
 
-    const white_king_square: u6 = @intCast(bit.leastSignificantBit(board.wKing));
+    // Bishop Pair Imbalance
+    const white_bishop_pair = bit.bitCount(board.wBishops) > 1;
+    const black_bishop_pair = bit.bitCount(board.bBishops) > 1;
+
+    if (white_bishop_pair and !black_bishop_pair) {
+        score += 1500;
+    } else if (black_bishop_pair and !white_bishop_pair) {
+        score -= 1500;
+    }
+
+    // Bishops On Long Diagonals
+    score += 3 * bit.bitCount(board.wBishops & (map.a1_diagonal | map.h1_diagonal));
+    score -= 3 * bit.bitCount(board.bBishops & (map.a1_diagonal | map.h1_diagonal));
+
+    // King Piece Square Value
     score += if (end_game) king_end_game_psv[white_king_square] else king_psv[white_king_square];
-    const white_king_file = map.getSquareFile(white_king_square);
+    // King Safety
     score += 5 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());
+    // King Piece On Semi-Open or Open File (deduction)
+    const white_king_file = map.getSquareFile(white_king_square);
     score -= if (white_king_file & board.wPawns & board.bPawns == 0) 15 else if (white_king_file & board.wPawns == 0) 10 else 0;
 
-    const black_king_square: u6 = @intCast(bit.leastSignificantBit(board.bKing));
+    // Black King Piece Square Value
     score -= if (end_game) black_king_end_game_psv[black_king_square] else black_king_psv[black_king_square];
-    const black_king_file = map.getSquareFile(black_king_square);
+    // Black King Safety
     score -= 5 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());
+    // Black King Piece On Semi-Open or Open File (deduction)
+    const black_king_file = map.getSquareFile(black_king_square);
     score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
 
     return score;
