@@ -24,6 +24,17 @@ pub const RANK_6: u64 = 16711680;
 pub const RANK_7: u64 = 65280;
 pub const RANK_8: u64 = 255;
 
+pub const ranks: [8]u64 = [8]u64{ RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 };
+pub const files: [8]u64 = [8]u64{ FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H };
+
+pub fn getSquareRank(square: u6) u64 {
+    return ranks[7 - square / 8];
+}
+
+pub fn getSquareFile(square: u6) u64 {
+    return files[square % 8];
+}
+
 pub const DIAGONAL_A1H8: u64 = 9241421688590303745;
 pub const DIAGONAL_H1A8: u64 = 18049651735527936;
 

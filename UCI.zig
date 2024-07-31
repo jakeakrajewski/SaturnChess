@@ -340,7 +340,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         if (moves_to_go > -1) {
             time_allowance = @intCast(@divTrunc(remaining_time, moves_to_go) + @divTrunc(increment, 2));
         } else {
-            time_allowance = @intCast(@divTrunc(remaining_time, 30) + @divTrunc(increment, 2));
+            time_allowance = @intCast(@divTrunc(remaining_time, 40) + @divTrunc(increment, 2));
         }
         if (time_allowance > remaining_time) time_allowance = remaining_time - 500;
         if (time_allowance < 0) time_allowance = 100;

@@ -12,22 +12,25 @@ const uci = @import("UCI.zig");
 const mid_game_material_score = []u16{ 100, 700, 800, 1200, 2500, 10000 };
 const end_game_material_score = []u16{ 200, 800, 900, 1300, 2700, 10000 };
 const phase: f32 = 0.0;
+var end_game: bool = false;
+pub var board: brd.Board = undefined;
 
-pub inline fn evaluate(board: brd.Board) i64 {
+pub inline fn evaluate(b: brd.Board) i64 {
+    board = b;
+    end_game = isEndGame(b);
     var score: i64 = 0;
     // phase = gamePhase(board);
-    score += scorePawns(board, 0) - scorePawns(board, 1);
-    score += materialScore(board);
-    score += pieceSquareScore(board);
-    score += scorePieces(board);
+    score += scorePawns(0) - scorePawns(1);
+    score += materialScore();
+    score += pawnSquareScore();
+    score += scorePieces();
     return if (board.sideToMove == 0) score else -score;
 }
 
-pub inline fn materialCount(board: brd.Board) i64 {
-    var b = board;
-    return bit.bitCount(b.allPieces() ^ (board.wPawns | board.bPawns)) - 2;
+pub inline fn materialCount() i64 {
+    return bit.bitCount(board.allPieces() ^ (board.wPawns | board.bPawns)) - 2;
 }
-pub inline fn nonPawnMaterialValue(board: brd.Board) i64 {
+pub inline fn nonPawnMaterialValue() i64 {
     var score: i64 = 0;
 
     score += 100 * (@as(i64, bit.bitCount(board.wKnights)) + bit.bitCount(board.bKnights));
@@ -38,8 +41,9 @@ pub inline fn nonPawnMaterialValue(board: brd.Board) i64 {
     return score;
 }
 
-pub inline fn isEndGame(board: brd.Board) bool {
-    if (materialCount(board) <= 7) return true else return false;
+pub inline fn isEndGame(b: brd.Board) bool {
+    board = b;
+    if (materialCount() <= 7) return true else return false;
 }
 
 // pub inline fn gamePhase() f32 {
@@ -52,7 +56,7 @@ pub inline fn isEndGame(board: brd.Board) bool {
 //     return 1 - (material - end_game_cutoff) / (max_material - end_game_cutoff);
 // }
 
-pub inline fn materialScore(board: brd.Board) i64 {
+pub inline fn materialScore() i64 {
     var score: i64 = 0;
 
     score += 100 * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
@@ -65,71 +69,37 @@ pub inline fn materialScore(board: brd.Board) i64 {
     return score;
 }
 
-pub inline fn pieceSquareScore(board: brd.Board) i64 {
-    var b = board;
+const passed_pawn_score: [8]i64 = [8]i64{ 0, 10, 30, 50, 75, 100, 150, 200 };
+
+pub inline fn pawnSquareScore() i64 {
     var score: i64 = 0;
-    const end_game = if (materialCount(board) <= 7) true else false;
-
-    const bitBoards = b.generateBoardArray();
-
-    for (0..12) |i| {
-        var piece_board = bitBoards[i];
-
-        while (piece_board > 0) {
-            const square = bit.leastSignificantBit(piece_board);
-
-            bit.popBit(&piece_board, (@intCast(square)));
-
-            switch (i) {
-                0 => {
-                    score += pawn_psv[square];
-                },
-                1 => {
-                    score += knight_psv[square];
-                },
-                2 => {
-                    score += bishop_psv[square];
-                },
-                3 => {
-                    score += rook_psv[square];
-                },
-                4 => {
-                    continue;
-                },
-                5 => {
-                    if (end_game) {
-                        score -= king_end_game_psv[square];
-                    } else {
-                        score += king_psv[square];
-                    }
-                },
-                6 => {
-                    score -= black_pawn_psv[square];
-                },
-                7 => {
-                    score -= black_knight_psv[square];
-                },
-                8 => {
-                    score -= black_bishop_psv[square];
-                },
-                9 => {
-                    score -= black_rook_psv[square];
-                },
-                10 => {
-                    continue;
-                },
-                11 => {
-                    if (end_game) {
-                        score -= black_king_end_game_psv[square];
-                    } else {
-                        score -= black_king_psv[square];
-                    }
-                },
-                else => {
-                    continue;
-                },
-            }
+    var white_pawns = board.wPawns;
+    var black_pawns = board.bPawns;
+    while (white_pawns > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(white_pawns));
+        bit.popBit(&white_pawns, (@intCast(square)));
+        const rank = 7 - square / 8;
+        var passed_mask = map.getSquareFile(square);
+        if (square % 8 > 0) passed_mask |= map.getSquareFile(square - 1);
+        if (square % 8 < 7) passed_mask |= map.getSquareFile(square + 1);
+        const board_ahead = ~@as(u64, 0) >> 63 - square;
+        if (board.bPawns & passed_mask & board_ahead == 0) {
+            score += passed_pawn_score[rank];
         }
+        score += pawn_psv[square];
+    }
+    while (black_pawns > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(black_pawns));
+        bit.popBit(&black_pawns, (@intCast(square)));
+        const rank = 7 - square / 8;
+        var passed_mask = map.getSquareFile(square);
+        if (square % 8 > 0) passed_mask |= map.getSquareFile(square - 1);
+        if (square % 8 < 7) passed_mask |= map.getSquareFile(square + 1);
+        const board_ahead = ~@as(u64, 0) << square;
+        if (board.wPawns & passed_mask & board_ahead == 0) {
+            score -= passed_pawn_score[7 - rank];
+        }
+        score -= black_pawn_psv[square];
     }
 
     return score;
@@ -142,7 +112,7 @@ const pawn_psv: [64]i64 = .{
     40, 40, 40, 50, 50, 40, 40, 40,
     30, 30, 30, 40, 40, 40, 30, 30,
     10, 10, 10, 35, 35, 10, 10, 10,
-     5,  5, 10, 30, 30,  5,  5,  5,
+     5,  5, 10, 35, 35,  5,  5,  5,
      0,  0,  0,  5,  5,  0,  0,  0,
      0,  0,  0, -10,-10,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0,
@@ -273,15 +243,17 @@ const black_king_end_game_psv: [64]i64 = .{
     -50,-40,-30,-20,-20,-30,-40,-50
 };
 
-fn scorePawns(board: brd.Board, side: u1) i64 {
+// zig fmt: on
+
+fn scorePawns(side: u1) i64 {
     var score: i64 = 0;
     const pawns = if (side == 0) board.wPawns else board.bPawns;
     const opponent_pawns = if (side == 0) board.bPawns else board.wPawns;
-    score -= 5 * (bit.bitCount(getIsolatedPawns(pawns)));
+    score -= 10 * (bit.bitCount(getIsolatedPawns(pawns)));
     score -= 5 * (bit.bitCount(getBackwardPawns(pawns, opponent_pawns, side)));
     score -= 10 * (bit.bitCount(getDoubledPawns(pawns)));
-    score += 1 * (bit.bitCount(getConnectedPawns(pawns)));
-    score += 10 * (bit.bitCount(getPassedPawns(pawns, opponent_pawns, board.sideToMove)));
+    score += 2 * (bit.bitCount(getConnectedPawns(pawns)));
+    // score += 10 * (bit.bitCount(getPassedPawns(pawns, opponent_pawns, board.sideToMove)));
     return score;
 }
 
@@ -332,7 +304,6 @@ fn getBackwardPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
     }
 }
 
-
 fn getPassedPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
     const notAFile: u64 = 0xfefefefefefefefe;
     const notHFile: u64 = 0x7f7f7f7f7f7f7f7f;
@@ -351,63 +322,70 @@ fn getPassedPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
     }
 }
 
-fn scorePieces(board: brd.Board) i64{
-    var score: i64 = 0;
-    score += sliderMobility(board);
-    score += kingSafety(board);
-
-    return score;
-}
- 
-fn sliderMobility(board: brd.Board) i64 {
+fn scorePieces() i64 {
     var score: i64 = 0;
     var b = board;
-    var white_bishops = board.wBishops;
-    var white_rooks = board.wRooks;
-    var white_queens = board.wQueens;
-    var black_bishops = board.bBishops;
-    var black_rooks = board.bRooks;
-    var black_queens = board.bQueens;
-    
-    while (white_bishops > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(white_bishops));
-         bit.popBit(&white_bishops, (@intCast(square)));
-         score += 2 * (bit.bitCount(map.getBishopAttacks(square, b.allPieces())));
+
+    while (b.wKnights > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.wKnights));
+        bit.popBit(&b.wKnights, (@intCast(square)));
+        score += knight_psv[square];
     }
-    while (white_rooks > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(white_rooks));
-         bit.popBit(&white_rooks, (@intCast(square)));
-         score += 2 * (bit.bitCount(map.getRookAttacks(square, b.allPieces())));
+    while (b.wBishops > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.wBishops));
+        score += bishop_psv[square];
+        bit.popBit(&b.wBishops, (@intCast(square)));
+        score += 1 * (bit.bitCount(map.getBishopAttacks(square, board.allPieces())));
     }
-    while (white_queens > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(white_queens));
-         bit.popBit(&white_queens, (@intCast(square)));
-         score += 2 * (bit.bitCount(map.generateQueenAttacks(square, b.allPieces())));
+    while (b.wRooks > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.wRooks));
+        const file = map.getSquareFile(square);
+        score += rook_psv[square];
+        score += if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.wPawns == 0) 10 else 0;
+        bit.popBit(&b.wRooks, (@intCast(square)));
+        score += 1 * (bit.bitCount(map.getRookAttacks(square, board.allPieces())));
     }
-    while (black_bishops > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(black_bishops));
-         bit.popBit(&black_bishops, (@intCast(square)));
-         score -= 2 * (bit.bitCount(map.getBishopAttacks(square, b.allPieces())));
+    while (b.wQueens > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.wQueens));
+        bit.popBit(&b.wQueens, (@intCast(square)));
+        score += 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
     }
-    while (black_rooks > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(black_rooks));
-         bit.popBit(&black_rooks, (@intCast(square)));
-         score -= 2 * (bit.bitCount(map.getRookAttacks(square, b.allPieces())));
+    while (b.bKnights > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.bKnights));
+        bit.popBit(&b.bKnights, (@intCast(square)));
+        score -= black_knight_psv[square];
     }
-    while (black_queens > 0) {
-         const square: u6 = @intCast(bit.leastSignificantBit(black_queens));
-         bit.popBit(&black_queens, (@intCast(square)));
-         score -= 2 * (bit.bitCount(map.generateQueenAttacks(square, b.allPieces())));
+    while (b.bBishops > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.bBishops));
+        score -= black_bishop_psv[square];
+        bit.popBit(&b.bBishops, (@intCast(square)));
+        score -= 1 * (bit.bitCount(map.getBishopAttacks(square, board.allPieces())));
     }
+    while (b.bRooks > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.bRooks));
+        score -= black_rook_psv[square];
+        const file = map.getSquareFile(square);
+        score -= if (file & board.wPawns & board.bPawns == 0) 15 else if (file & board.bPawns == 0) 10 else 0;
+        bit.popBit(&b.bRooks, (@intCast(square)));
+        score -= 1 * (bit.bitCount(map.getRookAttacks(square, board.allPieces())));
+    }
+    while (b.bQueens > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(b.bQueens));
+        bit.popBit(&b.bQueens, (@intCast(square)));
+        score -= 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
+    }
+
+    const white_king_square: u6 = @intCast(bit.leastSignificantBit(board.wKing));
+    score += if (end_game) king_end_game_psv[white_king_square] else king_psv[white_king_square];
+    const white_king_file = map.getSquareFile(white_king_square);
+    score += 5 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());
+    score -= if (white_king_file & board.wPawns & board.bPawns == 0) 15 else if (white_king_file & board.wPawns == 0) 10 else 0;
+
+    const black_king_square: u6 = @intCast(bit.leastSignificantBit(board.bKing));
+    score -= if (end_game) black_king_end_game_psv[black_king_square] else black_king_psv[black_king_square];
+    const black_king_file = map.getSquareFile(black_king_square);
+    score -= 5 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());
+    score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
 
     return score;
-}
-
-fn kingSafety(board: brd.Board) i64 {
-    var b = board;
-    const white_king: usize = @intCast(bit.leastSignificantBit(board.wKing));
-    const black_king: usize = @intCast(bit.leastSignificantBit(board.bKing));
-    const white_safety = bit.bitCount(map.king_attacks[white_king] & b.wPieces());
-    const black_safety = bit.bitCount(map.king_attacks[black_king] & b.bPieces());
-    return (@as(i16, white_safety) * 1) - (@as(i16, black_safety) * 1);
 }
