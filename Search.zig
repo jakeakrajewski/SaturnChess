@@ -64,16 +64,17 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
         }
         prev_pv_table = pv_table;
         follow_pv = 1;
-        const score = try negaScout(b, moveList, @intCast(d), alpha, beta);
+        var score = try negaScout(b, moveList, @intCast(d), alpha, beta);
 
         if (score <= alpha or score >= beta) {
             alpha = -inifintity;
             beta = inifintity;
-            continue;
+            score = try negaScout(b, moveList, @intCast(d), alpha, beta);
+            // continue;
+        } else {
+            alpha = score - 50;
+            beta = score + 50;
         }
-
-        alpha = score - 50;
-        beta = score + 50;
 
         const end_time = std.time.milliTimestamp();
         const elapsed_time: i64 = end_time - start_time;

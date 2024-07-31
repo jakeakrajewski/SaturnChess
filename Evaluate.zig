@@ -16,7 +16,7 @@ const phase: f32 = 0.0;
 pub inline fn evaluate(board: brd.Board) i64 {
     var score: i64 = 0;
     // phase = gamePhase(board);
-    score += scorePawns(board.wPawns) - scorePawns(board.bPawns);
+    score += scorePawns(board, 0) - scorePawns(board, 1);
     score += materialScore(board);
     score += pieceSquareScore(board);
     score += scorePieces(board);
@@ -42,7 +42,7 @@ pub inline fn isEndGame(board: brd.Board) bool {
     if (materialCount(board) <= 7) return true else return false;
 }
 
-// pub inline fn gamePhase(board: brd.Board) f32 {
+// pub inline fn gamePhase() f32 {
 //     const material = materialCount(board);
 //     const max_material = 20800;
 //     const end_game_cutoff = 10000;
@@ -273,11 +273,15 @@ const black_king_end_game_psv: [64]i64 = .{
     -50,-40,-30,-20,-20,-30,-40,-50
 };
 
-fn scorePawns(pawns: u64) i64 {
+fn scorePawns(board: brd.Board, side: u1) i64 {
     var score: i64 = 0;
+    const pawns = if (side == 0) board.wPawns else board.bPawns;
+    const opponent_pawns = if (side == 0) board.bPawns else board.wPawns;
     score -= 5 * (bit.bitCount(getIsolatedPawns(pawns)));
+    score -= 5 * (bit.bitCount(getBackwardPawns(pawns, opponent_pawns, side)));
     score -= 10 * (bit.bitCount(getDoubledPawns(pawns)));
     score += 1 * (bit.bitCount(getConnectedPawns(pawns)));
+    score += 10 * (bit.bitCount(getPassedPawns(pawns, opponent_pawns, board.sideToMove)));
     return score;
 }
 
@@ -300,6 +304,51 @@ fn getConnectedPawns(pawns: u64) u64 {
     const rightAdjacent = (pawns << 1) & 0xfefefefefefefefe;
     const connectedPawns = pawns & (leftAdjacent | rightAdjacent);
     return connectedPawns;
+}
+
+fn getBackwardPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
+    const notAFile: u64 = 0xfefefefefefefefe;
+    const notHFile: u64 = 0x7f7f7f7f7f7f7f7f;
+    const isWhite: bool = side == 0;
+
+    if (isWhite) {
+        // Shift enemy pawns up to check for attack coverage in front of the pawns
+        const enemyAttacks = (enemyPawns >> 7 & notAFile) | (enemyPawns >> 8) | (enemyPawns >> 9 & notHFile);
+        // Shift own pawns to check for support coverage
+        const ownLeft = (ownPawns >> 1) & notAFile;
+        const ownRight = (ownPawns << 1) & notHFile;
+        const unsupportedPawns = ownPawns & ~ownLeft & ~ownRight;
+        const backwardPawns = unsupportedPawns & enemyAttacks;
+        return backwardPawns;
+    } else {
+        // Shift enemy pawns down to check for attack coverage in front of the pawns
+        const enemyAttacks = (enemyPawns << 7 & notHFile) | (enemyPawns << 8) | (enemyPawns << 9 & notAFile);
+        // Shift own pawns to check for support coverage
+        const ownLeft = (ownPawns >> 1) & notAFile;
+        const ownRight = (ownPawns << 1) & notHFile;
+        const unsupportedPawns = ownPawns & ~ownLeft & ~ownRight;
+        const backwardPawns = unsupportedPawns & enemyAttacks;
+        return backwardPawns;
+    }
+}
+
+
+fn getPassedPawns(ownPawns: u64, enemyPawns: u64, side: u1) u64 {
+    const notAFile: u64 = 0xfefefefefefefefe;
+    const notHFile: u64 = 0x7f7f7f7f7f7f7f7f;
+    const isWhite: bool = side == 0;
+
+    // For white pawns, they advance up the board (shift left)
+    if (isWhite) {
+        const enemyPawnsInFront = (enemyPawns | (enemyPawns << 1 & notAFile) | (enemyPawns >> 1 & notHFile)) << 8;
+        const enemyPawnsFurtherInFront = (enemyPawnsInFront | (enemyPawnsInFront << 8) | (enemyPawnsInFront << 16) | (enemyPawnsInFront << 24) | (enemyPawnsInFront << 32) | (enemyPawnsInFront << 40));
+        return ownPawns & ~enemyPawnsFurtherInFront;
+    } else {
+        // For black pawns, they advance down the board (shift right)
+        const enemyPawnsInFront = (enemyPawns | (enemyPawns << 1 & notAFile) | (enemyPawns >> 1 & notHFile)) >> 8;
+        const enemyPawnsFurtherInFront = (enemyPawnsInFront | (enemyPawnsInFront >> 8) | (enemyPawnsInFront >> 16) | (enemyPawnsInFront >> 24) | (enemyPawnsInFront >> 32) | (enemyPawnsInFront >> 40));
+        return ownPawns & ~enemyPawnsFurtherInFront;
+    }
 }
 
 fn scorePieces(board: brd.Board) i64{
