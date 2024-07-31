@@ -9,8 +9,8 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 
-const mid_game_material_score = [6]u16{ 100, 700, 800, 1200, 2500, 10000 };
-const end_game_material_score = [6]u16{ 200, 800, 900, 1300, 2700, 10000 };
+const mid_game_material_score = []u16{ 100, 700, 800, 1200, 2500, 10000 };
+const end_game_material_score = []u16{ 200, 800, 900, 1300, 2700, 10000 };
 const phase: f32 = 0.0;
 var end_game: bool = false;
 pub var board: brd.Board = undefined;
@@ -21,7 +21,7 @@ pub inline fn evaluate(b: brd.Board) i64 {
     var score: i64 = 0;
     // phase = gamePhase(board);
     score += scorePawns(0) - scorePawns(1);
-    score += midGameMaterialScore();
+    score += materialScore();
     score += pawnSquareScore();
     score += scorePieces();
     return if (board.sideToMove == 0) score else -score;
@@ -56,28 +56,15 @@ pub inline fn isEndGame(b: brd.Board) bool {
 //     return 1 - (material - end_game_cutoff) / (max_material - end_game_cutoff);
 // }
 
-pub inline fn endGameMaterialScore() i64 {
+pub inline fn materialScore() i64 {
     var score: i64 = 0;
 
-    score += end_game_material_score[0] * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
-    score += end_game_material_score[1] * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
-    score += end_game_material_score[2] * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
-    score += end_game_material_score[3] * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
-    score += end_game_material_score[4] * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
-    score += end_game_material_score[5] * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
-
-    return score;
-}
-
-pub inline fn midGameMaterialScore() i64 {
-    var score: i64 = 0;
-
-    score += mid_game_material_score[0] * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
-    score += mid_game_material_score[1] * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
-    score += mid_game_material_score[2] * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
-    score += mid_game_material_score[3] * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
-    score += mid_game_material_score[4] * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
-    score += mid_game_material_score[5] * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
+    score += 100 * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
+    score += 300 * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
+    score += 300 * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
+    score += 500 * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
+    score += 1000 * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
+    score += 10000 * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
 
     return score;
 }
