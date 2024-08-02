@@ -18,10 +18,10 @@ pub fn main() !void {
     try uci.uciLoop();
 
     // var board: brd.Board = undefined;
-    // brd.setBoardFromFEN("6k1/8/1B1RN3/8/1Q1p4/4P3/1qnr4/b6K w - - 0 1", &board);
+    // brd.setBoardFromFEN("2K5/8/8/3pRrRr/8/8/8/2k5 w - - 0 1", &board);
     //
-    // const move: mv.Move = mv.Move{ .source = @intFromEnum(sqr.Square.B6), .target = @intFromEnum(sqr.Square.D4), .piece = .B, .isCapture = true };
+    // const move: mv.Move = mv.Move{ .source = @intFromEnum(sqr.Square.E5), .target = @intFromEnum(sqr.Square.D5), .piece = .R, .isCapture = true };
     //
     // bit.print(board.allPieces());
-    // std.debug.print("\n SEE: {}", .{ser.statickExchangeEvaluation(move, &board)});
+    // std.debug.print("\n SEE: {}", .{ser.staticExchangeDriver(move, &board)});
 }

@@ -53,7 +53,8 @@ pub const Board = struct {
         return self.wPieces() | self.bPieces();
     }
 
-    pub fn getEpSquare(self: *Board) u6 {
+    pub fn getEpSquare(self: *Board) ?u6 {
+        if (self.enPassantSquare == 0) return null;
         return @intCast(bit.leastSignificantBit(self.enPassantSquare));
     }
 
