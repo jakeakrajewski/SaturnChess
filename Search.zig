@@ -3,6 +3,7 @@ const mv = @import("Moves.zig");
 const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
 const std = @import("std");
+const map = @import("Maps.zig");
 const eval = @import("Evaluate.zig");
 const zob = @import("Zobrist.zig");
 const uci = @import("UCI.zig");
@@ -28,6 +29,7 @@ var positions_reached: [max_ply]u64 = undefined;
 pub var transposition_tables: [zob.hash_size]zob.TranspositionTable = undefined;
 pub const mate_value: i64 = 49000;
 pub const mate_score: i64 = 48000;
+pub var best_move: ?mv.Move = null;
 
 pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, timedSearch: bool, time: i64) !mv.Move {
     const stdout = std.io.getStdOut().writer();
@@ -239,6 +241,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
 
         if (score > alpha) {
             hash_flag = 0;
+            best_move = move;
 
             // History Move Heuristics
             if (!move.isCapture) {
@@ -257,7 +260,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
         if (score >= beta) {
             // Write Beta Cutoff To Transposition Tables
-            zob.writeTT(board.*, &transposition_tables, beta, 2, depth, ply);
+            zob.writeTT(board.*, &transposition_tables, null, beta, 2, depth, ply);
 
             // Killer Move Heuristic
             if (!move.isCapture) {
@@ -269,7 +272,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
     }
 
-    zob.writeTT(board.*, &transposition_tables, alpha, hash_flag, depth, ply);
+    zob.writeTT(board.*, &transposition_tables, best_move, alpha, hash_flag, depth, ply);
     return alpha;
 }
 
@@ -322,6 +325,123 @@ fn quiesce(board: *brd.Board, moveList: *std.ArrayList(mv.Move), alpha: i64, bet
     return a;
 }
 
+pub fn staticExchangeEvaluation(move: mv.Move, board: *brd.Board) i32 {
+    const target_square = move.target;
+    var b = board.*;
+    var scores: [30]i32 = undefined;
+
+    const pawns = if (board.sideToMove == 0) b.wPawns else b.bPawns;
+    const enemy_pawns = if (board.sideToMove == 0) b.bPawns else b.wPawns;
+
+    var white_attackers: u64 = 0;
+    var black_attackers: u64 = 0;
+    white_attackers |= map.pawn_attacks[0][target_square] & pawns;
+    black_attackers |= map.pawn_attacks[1][target_square] & enemy_pawns;
+    white_attackers |= map.knight_attacks[target_square] & b.wKnights;
+    black_attackers |= map.knight_attacks[target_square] & b.bKnights;
+    white_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.wBishops | b.wQueens);
+    black_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.bBishops | b.bQueens);
+    white_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.wRooks | b.wQueens);
+    black_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.bRooks | b.bQueens);
+    white_attackers |= map.king_attacks[target_square] & b.wKing;
+    black_attackers |= map.king_attacks[target_square] & b.bKing;
+
+    var score: i32 = 0;
+    var attacked_piece_value: i32 = 0;
+    var index: usize = 0;
+    var sideToMove = board.sideToMove;
+
+    if (b.GetPieceAtSquare(target_square)) |p| {
+        score = getPieceValue(p);
+    } else {
+        // return -10001;
+        std.debug.print("\n", .{});
+        printMoveDebug(move);
+        std.debug.print("\nIs Capture: {}", .{move.isCapture});
+        bit.print(b.allPieces());
+        @panic("SEE attempted to retrieve piece from empty square.");
+    }
+    var attacking_piece = move.piece;
+    // attacked piece becomes new piece moving to square
+    attacked_piece_value = getPieceValue(attacking_piece);
+
+    scores[index] = score;
+    index += 1;
+    b.updateBoard(attacking_piece, move.source, target_square, sideToMove, (target_square == bit.leastSignificantBit(board.enPassantSquare)));
+    if (sideToMove == 0) bit.popBit(&white_attackers, move.source) else bit.popBit(&black_attackers, move.source);
+    sideToMove ^= 1;
+
+    white_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.wBishops | b.wQueens);
+    black_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.bBishops | b.bQueens);
+    white_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.wRooks | b.wQueens);
+    black_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.bRooks | b.bQueens);
+
+    while ((sideToMove == 0 and white_attackers > 0) or (sideToMove == 1 and black_attackers > 0)) {
+        score = attacked_piece_value;
+        scores[index] = score - scores[index - 1];
+        var start_square: u6 = 0;
+        if (sideToMove == 0) {
+            start_square = findLeastValuablePiece(white_attackers, board.*);
+        } else {
+            start_square = findLeastValuablePiece(black_attackers, board.*);
+        }
+
+        if (board.GetPieceAtSquare(start_square)) |p| {
+            attacking_piece = p;
+        } else {
+            @panic("SEE attempted to retrieve piece from empty square.");
+        }
+        attacked_piece_value = getPieceValue(attacking_piece);
+        index += 1;
+
+        b.updateBoard(attacking_piece, start_square, target_square, sideToMove, false);
+
+        sideToMove ^= 1;
+        white_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.wBishops | b.wQueens);
+        black_attackers |= map.getBishopAttacks(target_square, b.allPieces()) & (b.bBishops | b.bQueens);
+        white_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.wRooks | b.wQueens);
+        black_attackers |= map.getRookAttacks(target_square, b.allPieces()) & (b.bRooks | b.bQueens);
+        bit.popBit(&white_attackers, start_square);
+        bit.popBit(&black_attackers, start_square);
+    }
+
+    while (index > 1) {
+        index -= 1;
+        if (scores[index - 1] > -scores[index]) {
+            scores[index - 1] = -scores[index];
+        }
+    }
+
+    return if (board.sideToMove == 0) return scores[0] else return -scores[0];
+}
+
+fn findLeastValuablePiece(mask: u64, board: brd.Board) u6 {
+    var b = board;
+    var current_score: u32 = 1000;
+    var least_valuable_square: u6 = 0;
+    var mask_copy = mask;
+    while (mask_copy > 0) {
+        const lsb: u6 = @intCast(bit.leastSignificantBit(mask_copy));
+        var piece: brd.Pieces = undefined;
+        if (b.GetPieceAtSquare(lsb)) |p| {
+            piece = p;
+        } else {
+            bit.print(b.allPieces());
+            bit.print(mask_copy);
+            bit.print(@as(u64, 1) << lsb);
+            @panic("SEE attempted to retrieve piece from empty square.");
+        }
+        const value = @abs(getPieceValue(piece));
+        if (value < current_score) {
+            current_score = value;
+            least_valuable_square = lsb;
+        }
+        bit.popBit(&mask_copy, lsb);
+    }
+
+    return least_valuable_square;
+}
+
 fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
     var scores = std.ArrayList(i32).init(std.heap.page_allocator);
     defer scores.deinit();
@@ -353,12 +473,29 @@ fn sortMoves(moveList: *std.ArrayList(mv.Move), board: *brd.Board) !void {
 
 fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     var score: i32 = 0;
+    var current_move = move;
+    if (best_move) |m| {
+        if (current_move.Equals(m)) {
+            return 30000;
+        }
+    }
     if (score_pv == 1 and pv_table[0][ply].Equals(move)) {
         score_pv = 0;
         return 20000;
     }
     if (move.isCapture) {
-        score += scoreCapture(move, board) + 10000;
+        const m = board.GetPieceAtSquare(move.target);
+        if (m) |_| {
+            // score += scoreCapture(move, board) + 10000;
+            score += staticExchangeEvaluation(move, board) + 10000;
+        } else {
+            if (board.enPassantSquare > 0 and move.target == board.getEpSquare()) {
+                return getPieceValue(move.piece) - 100;
+            }
+            bit.print(board.allPieces());
+            printMoveDebug(move);
+            @panic("Something weird is happening");
+        }
     } else {
         if (killer_moves[ply][0].Equals(move)) return 9000;
         if (killer_moves[ply][1].Equals(move)) return 8000;
@@ -370,9 +507,14 @@ fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
 
 fn scoreCapture(move: mv.Move, board: *brd.Board) i32 {
     const pieceValue = getPieceValue(move.piece);
+    if (move.target == bit.leastSignificantBit(board.enPassantSquare)) return 100 - pieceValue;
     const targetPiece = board.GetPieceAtSquare(move.target);
     if (targetPiece) |tp| {
         return getPieceValue(tp) - pieceValue;
+    } else {
+        bit.print(board.allPieces());
+        printMoveDebug(move);
+        @panic("no piece at target");
     }
     return 0;
 }

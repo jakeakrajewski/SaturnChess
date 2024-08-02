@@ -528,10 +528,10 @@ pub inline fn makeMove(move: Move, b: *brd.Board, s: u1) bool {
             7 => {
                 if (board.castle & 4 > 0) board.castle ^= 4;
             },
-            63 => {
+            56 => {
                 if (board.castle & 2 > 0) board.castle ^= 2;
             },
-            56 => {
+            63 => {
                 if (board.castle & 1 > 0) board.castle ^= 1;
             },
             else => {},

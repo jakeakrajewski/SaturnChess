@@ -17,6 +17,11 @@ pub fn perft(board: *brd.Board, list: *std.ArrayList(move.Move), startDepth: u8,
     try move.generateMoves(&moves, board, side);
 
     if (depth == 1) {
+        for (0..moves.items.len) |i| {
+            var start = try sqr.Square.FromIndex(moves.items[i].source);
+            var end = try sqr.Square.FromIndex(moves.items[i].target);
+            std.debug.print("\n     {s}{s} {}: ", .{ start.toString(), end.toString(), moves.items[i].isCapture });
+        }
         pos.update(moves);
         return pos;
     }

@@ -178,7 +178,7 @@ pub fn position(board: *brd.Board, tokens: []const u8) !void {
     if (command2 == null) return;
 
     if (std.mem.eql(u8, command2.?, "startpos")) {
-        clearPositions();
+        // clearPositions();
         half_turn = 0;
         brd.setBoardFromFEN(fen.start_position, board);
         zob.generateHashKey(board);
@@ -300,6 +300,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
         }
 
         if (std.mem.eql(u8, next_string.?, "btime")) {
+            timed_search = true;
             next_string = split.next();
             if (next_string == null) break;
             if (next_string) |time| {

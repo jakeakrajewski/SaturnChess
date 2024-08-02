@@ -16,7 +16,7 @@ pub var castle_keys: [16]u64 = undefined;
 pub var side_key: u64 = undefined;
 var seed: u32 = 1804289383;
 
-pub const hash_size = 0x400000;
+pub const hash_size = 0x800000;
 
 pub fn initHashKeys() void {
     for (0..12) |p| {
@@ -65,6 +65,7 @@ pub const TranspositionTable = struct {
     depth: i32,
     flags: u2,
     score: i64,
+    move: ?mv.Move = null,
 };
 
 pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i8, alpha: i64, beta: i64, ply: u16) i64 {
@@ -85,11 +86,13 @@ pub fn probeTT(board: brd.Board, table: *[hash_size]TranspositionTable, depth: i
                 return beta;
             }
         }
+
+        ser.best_move = entry.move;
     }
     return 100000;
 }
 
-pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i64, flags: u2, depth: i8, ply: u16) void {
+pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, bestMove: ?mv.Move, score: i64, flags: u2, depth: i8, ply: u16) void {
     var adjusted_score = score;
     var entry = table[board.hashKey % hash_size];
     if (entry.depth > depth) return;
@@ -99,6 +102,9 @@ pub fn writeTT(board: brd.Board, table: *[hash_size]TranspositionTable, score: i
     entry.score = adjusted_score;
     entry.depth = depth;
     entry.flags = flags;
+    if (bestMove) |m| {
+        entry.move = m;
+    }
     table[board.hashKey % hash_size] = entry;
 }
 

@@ -53,6 +53,10 @@ pub const Board = struct {
         return self.wPieces() | self.bPieces();
     }
 
+    pub fn getEpSquare(self: *Board) u6 {
+        return @intCast(bit.leastSignificantBit(self.enPassantSquare));
+    }
+
     pub inline fn isSquareAttacked(self: *Board, square: u6, side: u1) u6 {
         var attackers: u6 = 0;
         if (side == 0) {
@@ -228,12 +232,18 @@ pub const Board = struct {
     pub fn GetPieceAtSquare(self: *Board, square: u6) ?Pieces {
         const square_board = @as(u64, 1) << square;
         if (self.allPieces() & square_board > 0) {
-            if ((self.wPawns | self.bPawns) & square_board > 0) return .P;
-            if ((self.wKnights | self.bKnights) & square_board > 0) return .N;
-            if ((self.wBishops | self.bBishops) & square_board > 0) return .B;
-            if ((self.wRooks | self.bRooks) & square_board > 0) return .R;
-            if ((self.wQueens | self.bQueens) & square_board > 0) return .Q;
-            if ((self.wKing | self.bKing) & square_board > 0) return .K;
+            if ((self.wPawns) & square_board > 0) return .P;
+            if ((self.bPawns) & square_board > 0) return .p;
+            if ((self.wKnights) & square_board > 0) return .N;
+            if ((self.bKnights) & square_board > 0) return .n;
+            if ((self.wBishops) & square_board > 0) return .B;
+            if ((self.bBishops) & square_board > 0) return .b;
+            if ((self.wRooks) & square_board > 0) return .R;
+            if ((self.bRooks) & square_board > 0) return .r;
+            if ((self.wQueens) & square_board > 0) return .Q;
+            if ((self.bQueens) & square_board > 0) return .q;
+            if ((self.wKing) & square_board > 0) return .K;
+            if ((self.bKing) & square_board > 0) return .k;
             return null;
         } else {
             return null;

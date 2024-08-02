@@ -393,19 +393,19 @@ fn scorePieces() i64 {
     const black_bishop_pair = bit.bitCount(board.bBishops) > 1;
 
     if (white_bishop_pair and !black_bishop_pair) {
-        score += 1500;
+        score += 15;
     } else if (black_bishop_pair and !white_bishop_pair) {
-        score -= 1500;
+        score -= 15;
     }
 
     // Bishops On Long Diagonals
-    score += 3 * bit.bitCount(board.wBishops & (map.a1_diagonal | map.h1_diagonal));
-    score -= 3 * bit.bitCount(board.bBishops & (map.a1_diagonal | map.h1_diagonal));
+    score += 1 * bit.bitCount(board.wBishops & (map.a1_diagonal | map.h1_diagonal));
+    score -= 1 * bit.bitCount(board.bBishops & (map.a1_diagonal | map.h1_diagonal));
 
     // King Piece Square Value
     score += if (end_game) king_end_game_psv[white_king_square] else king_psv[white_king_square];
     // King Safety
-    score += 5 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());
+    score += 1 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());
     // King Piece On Semi-Open or Open File (deduction)
     const white_king_file = map.getSquareFile(white_king_square);
     score -= if (white_king_file & board.wPawns & board.bPawns == 0) 15 else if (white_king_file & board.wPawns == 0) 10 else 0;
@@ -413,7 +413,7 @@ fn scorePieces() i64 {
     // Black King Piece Square Value
     score -= if (end_game) black_king_end_game_psv[black_king_square] else black_king_psv[black_king_square];
     // Black King Safety
-    score -= 5 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());
+    score -= 1 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());
     // Black King Piece On Semi-Open or Open File (deduction)
     const black_king_file = map.getSquareFile(black_king_square);
     score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
