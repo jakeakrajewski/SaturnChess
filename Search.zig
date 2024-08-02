@@ -486,8 +486,8 @@ fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     if (move.isCapture) {
         const m = board.GetPieceAtSquare(move.target);
         if (m) |_| {
-            // score += scoreCapture(move, board) + 10000;
-            score += staticExchangeEvaluation(move, board) + 10000;
+            score += scoreCapture(move, board) + 10000;
+            // score += staticExchangeEvaluation(move, board) + 10000;
         } else {
             if (board.enPassantSquare > 0 and move.target == board.getEpSquare()) {
                 return getPieceValue(move.piece) - 100;
