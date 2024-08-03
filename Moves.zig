@@ -10,11 +10,13 @@ pub var check_mask: u64 = 0;
 pub var board: *brd.Board = undefined;
 pub var side: u1 = 0;
 pub var list: *std.ArrayList(Move) = undefined;
+var captures_only = false;
 
 pub inline fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
     board = b;
     side = s;
     list = move_list;
+    captures_only = false;
     const king_board = if (side == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
     const attackers = board.isSquareAttacked(king_square, side);
@@ -33,6 +35,28 @@ pub inline fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u
         if (attackers == 0) {
             try castleMoves();
         }
+    }
+}
+pub inline fn generateCaptures(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
+    board = b;
+    side = s;
+    list = move_list;
+    captures_only = true;
+    const king_board = if (side == 0) board.wKing else board.bKing;
+    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
+    const attackers = board.isSquareAttacked(king_square, side);
+    pin_mask = getPinMask();
+    check_mask = 0;
+
+    if (attackers > 0) {
+        check_mask = getCheckMask();
+    }
+
+    if (attackers > 1) {
+        try kingMoves();
+    } else {
+        try pawnMoves();
+        try pieceMoves();
     }
 }
 
@@ -193,48 +217,50 @@ pub inline fn pawnMoves() !void {
         var target: u6 = @intCast(source + direction);
         if (target < 0) continue;
 
-        const source_board = @as(u64, 1) << source;
         var target_board = @as(u64, 1) << target;
-        const double_board = if (rank == double_rank) @as(u64, 1) << @intCast(target + direction) else 0;
-        var single_possible = true;
-        var double_possible = true;
-        var piece_pinned = false;
+        if (!captures_only) {
+            const source_board = @as(u64, 1) << source;
+            const double_board = if (rank == double_rank) @as(u64, 1) << @intCast(target + direction) else 0;
+            var single_possible = true;
+            var double_possible = true;
+            var piece_pinned = false;
 
-        if (check_mask > 0) {
-            if ((check_mask & target_board) == 0) single_possible = false;
-            if ((check_mask & double_board) == 0) double_possible = false;
-        }
-
-        if ((pin_mask & source_board) > 0) {
-            var board_copy = board.*;
-            if (side == 0) {
-                bit.popBit(&board_copy.wPawns, source);
-                bit.setBit(&board_copy.wPawns, target);
-            } else {
-                bit.popBit(&board_copy.bPawns, source);
-                bit.setBit(&board_copy.bPawns, target);
+            if (check_mask > 0) {
+                if ((check_mask & target_board) == 0) single_possible = false;
+                if ((check_mask & double_board) == 0) double_possible = false;
             }
 
-            if (board_copy.isSquareAttacked(king_square, side) > 0) piece_pinned = true;
-        }
-
-        var piece_at_target: bool = target_board & board.allPieces() > 0;
-        if (!piece_at_target and !piece_pinned) {
-            if (rank == promotion_rank and single_possible) {
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .Q });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .R });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .B });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N });
-            } else {
-                if (single_possible) {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece });
+            if ((pin_mask & source_board) > 0) {
+                var board_copy = board.*;
+                if (side == 0) {
+                    bit.popBit(&board_copy.wPawns, source);
+                    bit.setBit(&board_copy.wPawns, target);
+                } else {
+                    bit.popBit(&board_copy.bPawns, source);
+                    bit.setBit(&board_copy.bPawns, target);
                 }
 
-                if (rank == double_rank and double_possible) {
-                    // Double pawn push
-                    piece_at_target = bit.getBit(board.allPieces(), @intCast(target + direction)) > 0;
-                    if (!piece_at_target) {
-                        try list.append(Move{ .source = source, .target = @intCast(target + direction), .piece = piece, .isDoublePush = true });
+                if (board_copy.isSquareAttacked(king_square, side) > 0) piece_pinned = true;
+            }
+
+            var piece_at_target: bool = target_board & board.allPieces() > 0;
+            if (!piece_at_target and !piece_pinned) {
+                if (rank == promotion_rank and single_possible) {
+                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .Q });
+                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .R });
+                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .B });
+                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N });
+                } else {
+                    if (single_possible) {
+                        try list.append(Move{ .source = source, .target = target, .piece = piece });
+                    }
+
+                    if (rank == double_rank and double_possible) {
+                        // Double pawn push
+                        piece_at_target = bit.getBit(board.allPieces(), @intCast(target + direction)) > 0;
+                        if (!piece_at_target) {
+                            try list.append(Move{ .source = source, .target = @intCast(target + direction), .piece = piece, .isDoublePush = true });
+                        }
                     }
                 }
             }
@@ -283,6 +309,7 @@ pub inline fn pieceMoves() !void {
             const source_board = @as(u64, 1) << source;
             bit.popLSB(&bitBoard);
             var targets = board.getPieceAttacks(piece, source, side);
+            if (captures_only) targets &= opponent_pieces;
 
             if (check_mask > 0 and piece != .K and piece != .k) {
                 targets &= check_mask;
@@ -328,6 +355,7 @@ pub inline fn kingMoves() !void {
         const source: u6 = @intCast(bit.leastSignificantBit(king));
         bit.popBit(&king, source);
         var targets = try map.maskKingAttacks(source) & ~pieces;
+        if (captures_only) targets &= opponent_pieces;
         while (targets > 0) {
             const target: u6 = @intCast(bit.leastSignificantBit(targets));
             const target_square = @as(u64, 1) << target;

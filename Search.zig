@@ -303,7 +303,7 @@ fn quiesce(board: *brd.Board, moveList: *std.ArrayList(mv.Move), alpha: i64, bet
     var moves = std.ArrayList(mv.Move).init(moveList.allocator);
     defer moves.deinit();
     var score = a;
-    try mv.generateMoves(&moves, board, board.sideToMove);
+    try mv.generateCaptures(&moves, board, board.sideToMove);
     if (moves.items.len > 0) try sortMoves(&moves, board);
     for (0..moves.items.len) |m| {
         if (stop_search) break;
