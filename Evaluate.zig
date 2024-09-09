@@ -11,7 +11,7 @@ const uci = @import("UCI.zig");
 
 const mid_game_material_score = []u16{ 100, 700, 800, 1200, 2500, 10000 };
 const end_game_material_score = []u16{ 200, 800, 900, 1300, 2700, 10000 };
-const phase: f32 = 0.0;
+var phase: f32 = 0.0;
 var end_game: bool = false;
 pub var board: brd.Board = undefined;
 
@@ -19,11 +19,16 @@ pub inline fn evaluate(b: brd.Board) i64 {
     board = b;
     end_game = isEndGame(b);
     var score: i64 = 0;
-    // phase = gamePhase(board);
+    phase = gamePhase();
+
+    const mid_game_material: f32 = @floatFromInt(materialScoreMG());
+    const end_game_material: f32 = @floatFromInt(materialScoreEG());
+    const material_score: i64 = @intFromFloat(phase * end_game_material + (1.0 - phase) * mid_game_material);
+    score += material_score;
     score += scorePawns(0) - scorePawns(1);
-    score += materialScore();
     score += pawnSquareScore();
     score += scorePieces();
+    score += space();
     return if (board.sideToMove == 0) score else -score;
 }
 
@@ -46,24 +51,38 @@ pub inline fn isEndGame(b: brd.Board) bool {
     if (materialCount() <= 7) return true else return false;
 }
 
-// pub inline fn gamePhase() f32 {
-//     const material = materialCount(board);
-//     const max_material = 20800;
-//     const end_game_cutoff = 10000;
-//
-//     if (material < end_game_cutoff) return 1;
-//
-//     return 1 - (material - end_game_cutoff) / (max_material - end_game_cutoff);
-// }
+pub inline fn gamePhase() f32 {
+    const material: f32 = @floatFromInt(materialCount());
+    const max_material: f32 = 20800;
+    const end_game_cutoff: f32 = 10000;
 
-pub inline fn materialScore() i64 {
+    if (material < end_game_cutoff) return 1.0;
+
+    // Cast to f32 to perform floating-point division
+    return 1.0 - (material - end_game_cutoff) / (max_material - end_game_cutoff);
+}
+
+pub inline fn materialScoreMG() i64 {
     var score: i64 = 0;
 
     score += 100 * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
-    score += 300 * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
-    score += 300 * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
-    score += 500 * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
-    score += 1000 * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
+    score += 700 * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
+    score += 800 * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
+    score += 1200 * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
+    score += 2500 * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
+    score += 10000 * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
+
+    return score;
+}
+
+pub inline fn materialScoreEG() i64 {
+    var score: i64 = 0;
+
+    score += 200 * (@as(i64, bit.bitCount(board.wPawns)) - bit.bitCount(board.bPawns));
+    score += 800 * (@as(i64, bit.bitCount(board.wKnights)) - bit.bitCount(board.bKnights));
+    score += 900 * (@as(i64, bit.bitCount(board.wBishops)) - bit.bitCount(board.bBishops));
+    score += 1300 * (@as(i64, bit.bitCount(board.wRooks)) - bit.bitCount(board.bRooks));
+    score += 2700 * (@as(i64, bit.bitCount(board.wQueens)) - bit.bitCount(board.bQueens));
     score += 10000 * (@as(i64, bit.bitCount(board.wKing)) - bit.bitCount(board.bKing));
 
     return score;
@@ -419,4 +438,66 @@ fn scorePieces() i64 {
     score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
 
     return score;
+}
+pub fn space() i64 {
+    if (isEndGame(board)) return 0;
+    const white_pieces = bit.bitCount(board.wPieces());
+    const black_pieces = bit.bitCount(board.bPieces());
+    var white_pawns = board.wPawns;
+    var black_pawns = board.bPawns;
+    var white_blocked: i64 = 0;
+    var black_blocked: i64 = 0;
+
+    while (white_pawns > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(white_pawns));
+        bit.popBit(&white_pawns, (@intCast(square)));
+        const source_board = @as(u64, 1) << square;
+        if (board.bPawns & source_board >> 8 > 0 or board.bPawns & source_board >> 15 > 0 and board.bPawns & source_board >> 17 > 0) white_blocked += 1;
+    }
+
+    while (black_pawns > 0) {
+        const square: u6 = @intCast(bit.leastSignificantBit(black_pawns));
+        bit.popBit(&black_pawns, (@intCast(square)));
+        const source_board = @as(u64, 1) << square;
+        if (board.wPawns & source_board << 8 > 0 or board.wPawns & source_board << 15 > 0 and board.wPawns & source_board << 17 > 0) black_blocked += 1;
+    }
+
+    const white_weight = white_pieces - 3 + @min(white_blocked, 9);
+    const black_weight = black_pieces - 3 + @min(black_blocked, 9);
+    const white_score = @divTrunc(whiteSafeZone() * white_weight * white_weight, 16);
+    const black_score = @divTrunc(blackSafeZone() * black_weight * black_weight, 16);
+
+    return white_score - black_score;
+}
+
+pub fn whiteSafeZone() i64 {
+    const white_center = map.RANK_2 & map.RANK_3 & map.RANK_4 & map.FILE_C & map.FILE_D & map.FILE_E & map.FILE_F;
+
+    var white_safe_squares: u64 = white_center;
+    white_safe_squares ^= board.bPawns << 8;
+    white_safe_squares ^= board.bPawns << 7;
+    white_safe_squares ^= board.bPawns << 9;
+
+    var white_behind: u64 = 0;
+    white_behind |= white_center & board.wPawns >> 8;
+    white_behind |= white_center & board.wPawns >> 16;
+    white_behind |= white_center & board.wPawns >> 24;
+
+    return @intCast(bit.bitCount(white_safe_squares) + bit.bitCount(white_behind));
+}
+
+pub fn blackSafeZone() i64 {
+    const black_center = map.RANK_5 & map.RANK_6 & map.RANK_7 & map.FILE_C & map.FILE_D & map.FILE_E & map.FILE_F;
+
+    var black_safe_squares: u64 = black_center;
+    black_safe_squares ^= board.wPawns >> 8;
+    black_safe_squares ^= board.wPawns >> 7;
+    black_safe_squares ^= board.wPawns >> 9;
+
+    var black_behind: u64 = 0;
+    black_behind |= black_center & board.bPawns << 8;
+    black_behind |= black_center & board.bPawns << 16;
+    black_behind |= black_center & board.bPawns << 24;
+
+    return @intCast(bit.bitCount(black_safe_squares) + bit.bitCount(black_behind));
 }

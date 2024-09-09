@@ -85,6 +85,7 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
             beta = score + 50;
         }
 
+        std.debug.print("\nLowest Depth Searched: {}", .{highest_ply});
         const end_time = std.time.milliTimestamp();
         const elapsed_time: i64 = end_time - start_time;
         if (score > -mate_value and score < -mate_score) {
@@ -253,13 +254,16 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
                 history_moves[move.target][@intFromEnum(move.piece)] += depth;
             }
 
-            // Update PV Table
-            pv_table[ply][ply] = move;
-            for (ply + 1..@intCast(pv_length[ply + 1])) |next_ply| {
-                pv_table[ply][next_ply] = pv_table[ply + 1][next_ply];
-            }
+            if (pv_length[ply + 1] != 0) {
 
-            pv_length[ply] = pv_length[ply + 1];
+                // Update PV Table
+                pv_table[ply][ply] = move;
+                for (ply + 1..@intCast(pv_length[ply + 1])) |next_ply| {
+                    pv_table[ply][next_ply] = pv_table[ply + 1][next_ply];
+                }
+
+                pv_length[ply] = pv_length[ply + 1];
+            }
 
             alpha = score;
         }
@@ -497,14 +501,24 @@ pub fn getLeastValuableAttacker(square: u6, board: brd.Board) ?u6 {
 }
 
 fn printMove(move: mv.Move) !void {
+    var m = move;
     const source = try sqr.Square.FromIndex(move.source);
     const target = try sqr.Square.FromIndex(move.target);
-    try std.io.getStdOut().writer().print("{s}{s} ", .{ source.toString(), target.toString() });
+    if (m.isPromotion()) {
+        try std.io.getStdOut().writer().print("{s}{s}{s} ", .{ source.toString(), target.toString(), m.promotionChar() });
+    } else {
+        try std.io.getStdOut().writer().print("{s}{s} ", .{ source.toString(), target.toString() });
+    }
 }
 fn printMoveDebug(move: mv.Move) void {
+    var m = move;
     const source = try sqr.Square.FromIndex(move.source);
     const target = try sqr.Square.FromIndex(move.target);
-    std.debug.print("{s}{s} ", .{ source.toString(), target.toString() });
+    if (m.isPromotion()) {
+        std.debug.print("{s}{s}{s} ", .{ source.toString(), target.toString(), m.promotionChar() });
+    } else {
+        std.debug.print("{s}{s} ", .{ source.toString(), target.toString() });
+    }
 }
 fn countOccurences(list: []u64, val: u64) u8 {
     var count: u8 = 0;

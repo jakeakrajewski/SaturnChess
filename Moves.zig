@@ -478,6 +478,16 @@ pub const Move = packed struct {
         if (self.source == other.source and self.target == other.target and self.piece == other.piece) return true;
         return false;
     }
+
+    pub fn promotionChar(self: *Move) []const u8 {
+        switch (self.promotion) {
+            .X => return "",
+            .N => return "n",
+            .B => return "b",
+            .R => return "r",
+            .Q => return "q",
+        }
+    }
 };
 
 pub fn FromU24(encoded: u24) Move {
