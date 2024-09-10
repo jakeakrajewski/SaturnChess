@@ -8,6 +8,7 @@ const perft = @import("Perft.zig");
 const search = @import("Search.zig");
 const builtin = @import("builtin");
 const zob = @import("Zobrist.zig");
+const eval = @import("Evaluate.zig");
 
 var depth: u8 = 64;
 var white_time: i64 = 0;
@@ -47,6 +48,10 @@ pub fn uciLoop() !void {
 
             if (std.mem.eql(u8, input, "quit")) {
                 break;
+            }
+
+            if (std.mem.eql(u8, input, "eval")) {
+                evaluate(&board, input);
             }
 
             var split = std.mem.split(u8, input, " ");
@@ -378,6 +383,42 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     } else {
         try std.io.getStdOut().writer().print("bestmove {s}{s}\n", .{ start.toString(), target.toString() });
     }
+}
+
+pub fn evaluate(board: *brd.Board, tokens: []const u8) void {
+    var split = std.mem.split(u8, tokens, " ");
+    const command = split.first();
+
+    if (!std.mem.eql(u8, command, "eval")) {
+        @panic("Invalid command passed to go.");
+    }
+
+    std.debug.print("Evaluation: {} centipawns\n", .{eval.evaluate(board.*)});
+    std.debug.print("End Game: {}\n", .{eval.isEndGame(board.*)});
+    std.debug.print("Game Phase: {}\n\n", .{eval.gamePhase()});
+
+    std.debug.print("Total Material: {}\n", .{eval.materialCount()});
+    std.debug.print("   - Non Pawn Material Value: {}\n", .{eval.nonPawnMaterialValue()});
+    std.debug.print("   - Middle Game Material Score: {}\n", .{eval.materialScoreMG()});
+    std.debug.print("   - End Game Material Score: {}\n\n", .{eval.materialScoreEG()});
+
+    std.debug.print("Pawn Square Score: {}\n\n", .{eval.pawnSquareScore()});
+
+    std.debug.print("White Pawns Score: {}\n\n", .{eval.scorePawns(0)});
+    std.debug.print("   - White Isolated: {}\n", .{eval.countIsolatedPawns(board.wPawns)});
+    std.debug.print("   - White Connected: {}\n", .{eval.countConnectedPawns(board.wPawns)});
+    std.debug.print("   - White Backward: {}\n", .{eval.countBackwardPawns(board.wPawns, board.bPawns, 0)});
+    std.debug.print("   - White Doubled: {}\n\n", .{bit.bitCount(eval.getDoubledPawns(board.wPawns))});
+
+    std.debug.print("Black Pawns Score: {}\n\n", .{eval.scorePawns(1)});
+    std.debug.print("   - Black Isolated: {}\n", .{eval.countIsolatedPawns(board.bPawns)});
+    std.debug.print("   - Black Connected: {}\n", .{eval.countConnectedPawns(board.bPawns)});
+    std.debug.print("   - Black Backward: {}\n", .{eval.countBackwardPawns(board.bPawns, board.wPawns, 1)});
+    std.debug.print("   - Black Doubled: {}\n\n", .{bit.bitCount(eval.getDoubledPawns(board.bPawns))});
+
+    std.debug.print("Space Score: {}\n\n", .{eval.space()});
+    std.debug.print("   - White Space Score: {}\n", .{eval.whiteSafeZone()});
+    std.debug.print("   - Black Space Score: {}\n", .{eval.blackSafeZone()});
 }
 
 pub fn printTestBoards(bitboard: *brd.Board) void {

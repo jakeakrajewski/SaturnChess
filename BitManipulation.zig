@@ -65,4 +65,5 @@ pub fn print(bitBoard: u64) void {
 
     std.debug.print("     A B C D E F G H \n", .{});
     std.debug.print("{d}", .{bitBoard});
+    std.debug.print("\n", .{});
 }

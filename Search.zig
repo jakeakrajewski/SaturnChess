@@ -85,7 +85,6 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
             beta = score + 50;
         }
 
-        std.debug.print("\nLowest Depth Searched: {}", .{highest_ply});
         const end_time = std.time.milliTimestamp();
         const elapsed_time: i64 = end_time - start_time;
         if (score > -mate_value and score < -mate_score) {
