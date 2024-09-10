@@ -50,10 +50,6 @@ pub fn uciLoop() !void {
                 break;
             }
 
-            if (std.mem.eql(u8, input, "eval")) {
-                evaluate(&board, input);
-            }
-
             var split = std.mem.split(u8, input, " ");
             const command = split.first();
 
@@ -74,6 +70,10 @@ pub fn uciLoop() !void {
                 try std.io.getStdOut().writer().print("uciok\n", .{});
             } else if (std.mem.eql(u8, input, "print")) {
                 printTestBoards(&board);
+            } else if (std.mem.eql(u8, command, "move")) {
+                makeMove(&board, input);
+            } else if (std.mem.eql(u8, input, "eval")) {
+                try evaluate(&board, input);
             }
         }
     }
@@ -385,7 +385,7 @@ pub fn go(board: *brd.Board, tokens: []const u8) !void {
     }
 }
 
-pub fn evaluate(board: *brd.Board, tokens: []const u8) void {
+pub fn evaluate(board: *brd.Board, tokens: []const u8) !void {
     var split = std.mem.split(u8, tokens, " ");
     const command = split.first();
 
@@ -395,7 +395,8 @@ pub fn evaluate(board: *brd.Board, tokens: []const u8) void {
 
     std.debug.print("Evaluation: {} centipawns\n", .{eval.evaluate(board.*)});
     std.debug.print("End Game: {}\n", .{eval.isEndGame(board.*)});
-    std.debug.print("Game Phase: {}\n\n", .{eval.gamePhase()});
+    std.debug.print("Game Phase: ", .{});
+    try std.fmt.format(std.io.getStdOut().writer(), "{d:.3}\n\n", .{eval.gamePhase()});
 
     std.debug.print("Total Material: {}\n", .{eval.materialCount()});
     std.debug.print("   - Non Pawn Material Value: {}\n", .{eval.nonPawnMaterialValue()});
@@ -419,6 +420,29 @@ pub fn evaluate(board: *brd.Board, tokens: []const u8) void {
     std.debug.print("Space Score: {}\n\n", .{eval.space()});
     std.debug.print("   - White Space Score: {}\n", .{eval.whiteSafeZone()});
     std.debug.print("   - Black Space Score: {}\n", .{eval.blackSafeZone()});
+}
+
+pub fn makeMove(board: *brd.Board, tokens: []const u8) void {
+    var split = std.mem.split(u8, tokens, " ");
+    _ = split.next();
+
+    var still_moves = true;
+    while (still_moves) {
+        const move = split.next();
+        if (move) |m| {
+            const parsed_move = parseMove(m, board.*);
+            if (parsed_move) |pm| {
+                const result = mv.makeMove(pm, board, board.sideToMove);
+                if (!result) {
+                    @panic("Invalid move received in position command");
+                }
+                positions[half_turn] = board.hashKey;
+                half_turn += 1;
+            }
+        } else {
+            still_moves = false;
+        }
+    }
 }
 
 pub fn printTestBoards(bitboard: *brd.Board) void {

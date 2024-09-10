@@ -38,10 +38,10 @@ pub inline fn materialCount() i64 {
 pub inline fn nonPawnMaterialValue() i64 {
     var score: i64 = 0;
 
-    score += 100 * (@as(i64, bit.bitCount(board.wKnights)) + bit.bitCount(board.bKnights));
-    score += 700 * (@as(i64, bit.bitCount(board.wBishops)) + bit.bitCount(board.bBishops));
-    score += 800 * (@as(i64, bit.bitCount(board.wRooks)) + bit.bitCount(board.bRooks));
-    score += 2500 * (@as(i64, bit.bitCount(board.wQueens)) + bit.bitCount(board.bQueens));
+    score += 300 * (@as(i64, bit.bitCount(board.wKnights)) + bit.bitCount(board.bKnights));
+    score += 300 * (@as(i64, bit.bitCount(board.wBishops)) + bit.bitCount(board.bBishops));
+    score += 500 * (@as(i64, bit.bitCount(board.wRooks)) + bit.bitCount(board.bRooks));
+    score += 900 * (@as(i64, bit.bitCount(board.wQueens)) + bit.bitCount(board.bQueens));
 
     return score;
 }
@@ -52,9 +52,9 @@ pub inline fn isEndGame(b: brd.Board) bool {
 }
 
 pub inline fn gamePhase() f32 {
-    const material: f32 = @floatFromInt(materialCount());
-    const max_material: f32 = 20800;
-    const end_game_cutoff: f32 = 10000;
+    const material: f32 = @floatFromInt(nonPawnMaterialValue());
+    const max_material: f32 = 6200;
+    const end_game_cutoff: f32 = 3800;
 
     if (material < end_game_cutoff) return 1.0;
 
