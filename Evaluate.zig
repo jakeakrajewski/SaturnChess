@@ -9,8 +9,6 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 
-const mid_game_material_score = []u16{ 100, 700, 800, 1200, 2500, 10000 };
-const end_game_material_score = []u16{ 200, 800, 900, 1300, 2700, 10000 };
 var phase: f32 = 0.0;
 var end_game: bool = false;
 pub var board: brd.Board = undefined;
@@ -58,7 +56,6 @@ pub inline fn gamePhase() f32 {
 
     if (material < end_game_cutoff) return 1.0;
 
-    // Cast to f32 to perform floating-point division
     return 1.0 - (material - end_game_cutoff) / (max_material - end_game_cutoff);
 }
 
@@ -107,7 +104,10 @@ pub inline fn pawnSquareScore() i64 {
             score += passed_pawn_score[rank];
         }
         // Piece Square Value
-        score += pawn_mg_psv[square];
+        const mg_psqt: f32 = @floatFromInt(pawn_mg_psv[square]);
+        const eg_psqt: f32 = @floatFromInt(pawn_eg_psv[square]);
+        const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
+        score += psqt_score;
     }
     while (black_pawns > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(black_pawns));
@@ -122,7 +122,10 @@ pub inline fn pawnSquareScore() i64 {
             score -= passed_pawn_score[7 - rank];
         }
         // Black Piece Square Value
-        score -= pawn_mg_psv[mirrorIndex(square)];
+        const mg_psqt: f32 = @floatFromInt(pawn_mg_psv[mirrorIndex(square)]);
+        const eg_psqt: f32 = @floatFromInt(pawn_eg_psv[mirrorIndex(square)]);
+        const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
+        score -= psqt_score;
     }
 
     return score;
@@ -227,6 +230,28 @@ const rook_eg_psv: [64]i64 = .{
     -4,  0, -5, -1, -7, -12,  -8, -16,
     -6, -6,  0,  2, -9,  -9, -11,  -3,
     -9,  2,  3, -1, -5, -13,   4, -20,
+};
+
+const queen_mg_psv: [64]i64 = .{
+    -28,   0,  29,  12,  59,  44,  43,  45,
+    -24, -39,  -5,   1, -16,  57,  28,  54,
+    -13, -17,   7,   8,  29,  56,  47,  57,
+    -27, -27, -16, -16,  -1,  17,  -2,   1,
+     -9, -26,  -9, -10,  -2,  -4,   3,  -3,
+    -14,   2, -11,  -2,  -5,   2,  14,   5,
+    -35,  -8,  11,   2,   8,  15,  -3,   1,
+     -1, -18,  -9,  10, -15, -25, -31, -50,
+};
+
+const queen_eg_psv: [64]i64 = .{
+     -9,  22,  22,  27,  27,  19,  10,  20,
+    -17,  20,  32,  41,  58,  25,  30,   0,
+    -20,   6,   9,  49,  47,  35,  19,   9,
+      3,  22,  24,  45,  57,  40,  57,  36,
+    -18,  28,  19,  47,  31,  34,  39,  23,
+    -16, -27,  15,   6,   9,  17,  10,   5,
+    -22, -23, -30, -16, -16, -23, -36, -32,
+    -33, -28, -22, -43,  -5, -32, -20, -41,
 };
 
 const king_mg_psv: [64]i64 = .{
@@ -419,8 +444,13 @@ pub fn scorePieces() i64 {
     while (b.wQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wQueens));
         bit.popBit(&b.wQueens, (@intCast(square)));
-        // Queen Piece Square Value
+        // Queen Mobility Value
         score += 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
+        //Queen Piece Square Value
+        const mg_psqt: f32 = @floatFromInt(queen_mg_psv[square]);
+        const eg_psqt: f32 = @floatFromInt(queen_eg_psv[square]);
+        const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
+        score += psqt_score;
     }
     while (b.bKnights > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bKnights));
@@ -466,8 +496,13 @@ pub fn scorePieces() i64 {
     while (b.bQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bQueens));
         bit.popBit(&b.bQueens, (@intCast(square)));
-        // Black Queen Piece Square Value
+        //Black Queen Mobility Value
         score -= 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
+        // Black Queen Piece Square Value
+        const mg_psqt: f32 = @floatFromInt(queen_mg_psv[mirrorIndex(square)]);
+        const eg_psqt: f32 = @floatFromInt(queen_eg_psv[mirrorIndex(square)]);
+        const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
+        score -= psqt_score;
     }
 
     const white_minor_behind_pawns = 20 * bit.bitCount((b.wPawns << 8) & (b.wKnights | b.wBishops));
