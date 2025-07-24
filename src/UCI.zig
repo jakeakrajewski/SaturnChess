@@ -74,6 +74,19 @@ pub fn uciLoop() !void {
                 makeMove(&board, input);
             } else if (std.mem.eql(u8, input, "eval")) {
                 try evaluate(&board, input);
+            } else if (std.mem.eql(u8, input, "allmoves")) {
+                var moves = std.ArrayList(mv.Move).init(allocator);
+                defer moves.deinit();
+                try mv.generateMoves(&moves, &board, board.sideToMove);
+                for (moves.items) |move| {
+                    var start = try sqr.Square.FromIndex(move.source);
+                    var end = try sqr.Square.FromIndex(move.target);
+                    std.debug.print("\nPiece: {} ", .{move.piece});
+                    std.debug.print("Start: {s} ", .{start.toString()});
+                    std.debug.print("End: {s} ", .{end.toString()});
+                    std.debug.print("Is Capture: {} ", .{move.isCapture});
+                    std.debug.print("Is EnPassant: {}", .{move.isEnPassant});
+                }
             }
         }
     }

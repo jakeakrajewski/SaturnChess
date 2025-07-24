@@ -361,7 +361,7 @@ pub fn generateRookAttacks(square: u6, blockers: u64) u64 {
     return attacks;
 }
 
-pub inline fn getBishopAttacks(square: u6, occupancy: u64) u64 {
+pub fn getBishopAttacks(square: u6, occupancy: u64) u64 {
     var occ: u128 = @intCast(occupancy);
     occ &= bishop_mask[square];
     occ *= bishop_magic_numbers[square];
@@ -370,7 +370,7 @@ pub inline fn getBishopAttacks(square: u6, occupancy: u64) u64 {
     return bishop_attacks[square][@intCast(occ)];
 }
 
-pub inline fn getRookAttacks(square: u6, occupancy: u64) u64 {
+pub fn getRookAttacks(square: u6, occupancy: u64) u64 {
     var occ: u128 = @intCast(occupancy);
     occ &= rook_mask[square];
     occ *= rook_magic_numbers[square];
@@ -427,6 +427,63 @@ pub fn initRookAttacks() void {
         }
     }
 }
+
+pub const ray_between: [64][64]u64 = blk: {
+    var table: [64][64]u64 = undefined;
+
+    @setEvalBranchQuota(100000);
+    for (0..64) |a_usize| {
+        const a: u6 = @intCast(a_usize);
+        for (0..64) |b_usize| {
+            const b: u6 = @intCast(b_usize);
+            table[a][b] = computeRayBetween(a, b);
+        }
+    }
+
+    break :blk table;
+};
+
+
+
+
+fn computeRayBetween(a: u6, b: u6) u64 {
+    const a_rank: isize = @intCast(a / 8);
+    const a_file: isize = @intCast(a % 8);
+    const b_rank: isize = @intCast(b / 8);
+    const b_file: isize = @intCast(b % 8);
+
+    const rank_diff = b_rank - a_rank;
+    const file_diff = b_file - a_file;
+
+    if (rank_diff != 0 and file_diff != 0 and @abs(rank_diff) != @abs(file_diff)) {
+        return 0;
+    }
+
+    var ray: u64 = 0;
+
+    const step_r = if (b_rank > a_rank) 1 else if (b_rank < a_rank) -1 else 0;
+    const step_f = if (b_file > a_file) 1 else if (b_file < a_file) -1 else 0;
+
+    // maximum distance between squares is 7
+    const max_steps = 7;
+
+    var r: isize = a_rank;
+    var f: isize = a_file;
+
+    for (0..max_steps) |_| {
+        r += step_r;
+        f += step_f;
+
+        if (r == b_rank and f == b_file) break;
+
+        const sq: u6 = @intCast(r * 8 + f);
+        ray |= (@as(u64, 1) << sq);
+    }
+
+    return ray;
+}
+
+
 
 pub fn initializeAttackTables() !void {
     try generateLeaperAttacks();

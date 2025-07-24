@@ -5,14 +5,19 @@ const bit = @import("BitManipulation.zig");
 const sqr = @import("Square.zig");
 const zob = @import("Zobrist.zig");
 
-pub var pin_mask: u64 = 0;
+pub var pin_masks: [64]u64 = [_]u64{0} ** 64; // Clear every move gen
+
 pub var check_mask: u64 = 0;
 pub var board: *brd.Board = undefined;
 pub var side: u1 = 0;
 pub var list: *std.ArrayList(Move) = undefined;
 var captures_only = false;
 
-pub inline fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
+pub inline fn rayBetween(a: u6, b: u6) u64 {
+    return map.ray_between[a][b];
+}
+
+pub fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
     board = b;
     side = s;
     list = move_list;
@@ -20,7 +25,8 @@ pub inline fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u
     const king_board = if (side == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
     const attackers = board.isSquareAttacked(king_square, side);
-    pin_mask = getPinMask();
+    pin_masks = [_]u64{0} ** 64; // Clear every move gen
+    getPinMask();
     check_mask = 0;
 
     if (attackers > 0) {
@@ -38,7 +44,7 @@ pub inline fn generateMoves(move_list: *std.ArrayList(Move), b: *brd.Board, s: u
     }
 }
 
-pub inline fn generateCaptures(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
+pub fn generateCaptures(move_list: *std.ArrayList(Move), b: *brd.Board, s: u1) !void {
     board = b;
     side = s;
     list = move_list;
@@ -46,7 +52,7 @@ pub inline fn generateCaptures(move_list: *std.ArrayList(Move), b: *brd.Board, s
     const king_board = if (side == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
     const attackers = board.isSquareAttacked(king_square, side);
-    pin_mask = getPinMask();
+    getPinMask();
     check_mask = 0;
 
     if (attackers > 0) {
@@ -61,83 +67,44 @@ pub inline fn generateCaptures(move_list: *std.ArrayList(Move), b: *brd.Board, s
     }
 }
 
-pub inline fn getPinMask() u64 {
-    var b = board;
-    const king_board = if (side == 0) board.wKing else board.bKing;
-    const pieces = if (side == 0) b.wPieces() else b.bPieces();
-    const opponent_pieces = if (side == 0) b.bPieces() else b.wPieces();
-    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
-    const bishop_pin_mask: u64 = map.getBishopAttacks(king_square, opponent_pieces);
-    const rook_pin_mask: u64 = map.getRookAttacks(king_square, opponent_pieces);
-    var bishops = (if (side == 0) board.bBishops else board.wBishops) & bishop_pin_mask;
-    var rooks = (if (side == 0) board.bRooks else board.wRooks) & rook_pin_mask;
-    var queens = (if (side == 0) board.bQueens else board.wQueens) & (rook_pin_mask | bishop_pin_mask);
 
-    var bishop_mask: u64 = 0;
-    var rook_mask: u64 = 0;
-    var queen_bishop_mask: u64 = 0;
-    var queen_rook_mask: u64 = 0;
+pub fn getPinMask() void {
+    @memset(&pin_masks, 0);
+    const king_square: u6 = @intCast(bit.leastSignificantBit(if (side == 0) board.wKing else board.bKing));
+    const own_pieces = if (side == 0) board.wPieces() else board.bPieces();
+    const opp_pieces = if (side == 0) board.bPieces() else board.wPieces();
+    const opp_bish_queen = (if (side == 0) board.bBishops | board.bQueens else board.wBishops | board.wQueens);
+    const opp_rook_queen = (if (side == 0) board.bRooks | board.bQueens else board.wRooks | board.wQueens);
 
-    while (bishops > 0) {
-        const source: u6 = @intCast(bit.leastSignificantBit(bishops));
-        const source_board: u64 = @as(u64, 1) << source;
-        const bishop_check = (source_board & map.getBishopAttacks(king_square, b.allPieces()));
+    // const all_pieces = board.allPieces();
 
-        if (bishop_check > 0) {
-            bit.popBit(&bishops, source);
-            continue;
+    // Sliding directions (bishop + rook)
+    const directions = [_]fn(u6, u64) u64{
+        map.getBishopAttacks,
+        map.getRookAttacks,
+    };
+
+    const sliders = [_]u64{ opp_bish_queen, opp_rook_queen };
+
+    inline for (directions, sliders) |getAttacks, enemy_sliders| {
+        var attacks = getAttacks(king_square, opp_pieces) & enemy_sliders;
+
+        while (attacks != 0) {
+            const attacker_square: u6 = @intCast(bit.leastSignificantBit(attacks));
+            bit.popBit(&attacks, attacker_square);
+
+            const ray = rayBetween(king_square, attacker_square) | (@as(u64, 1) << attacker_square);
+            const blockers = ray & own_pieces;
+
+            if (bit.bitCount(blockers) == 1) {
+                const pinned_sq: u6 = @intCast(bit.leastSignificantBit(blockers));
+                // Piece at pinned_sq is pinned along this ray
+                pin_masks[pinned_sq] = ray;
+            }
         }
-
-        if ((source_board & map.getBishopAttacks(king_square, opponent_pieces)) > 0) {
-            bishop_mask |= map.getBishopAttacks(source, pieces);
-        }
-        bit.popBit(&bishops, source);
-        bishop_mask &= map.getBishopAttacks(king_square, source_board);
     }
-
-    while (rooks > 0) {
-        const source: u6 = @intCast(bit.leastSignificantBit(rooks));
-        const source_board: u64 = @as(u64, 1) << source;
-        const rook_check = (source_board & map.getRookAttacks(king_square, b.allPieces()));
-
-        if (rook_check > 0) {
-            bit.popBit(&rooks, source);
-            continue;
-        }
-
-        if ((source_board & map.getRookAttacks(king_square, opponent_pieces)) > 0) {
-            rook_mask |= map.getRookAttacks(source, pieces);
-        }
-        bit.popBit(&rooks, source);
-        rook_mask &= map.getRookAttacks(king_square, source_board);
-    }
-
-    while (queens > 0) {
-        const source: u6 = @intCast(bit.leastSignificantBit(queens));
-        const source_board: u64 = @as(u64, 1) << source;
-
-        const bishop_check = (source_board & map.getBishopAttacks(king_square, b.allPieces()));
-        const rook_check = (source_board & map.getRookAttacks(king_square, b.allPieces()));
-
-        if (bishop_check > 0 or rook_check > 0) {
-            bit.popBit(&queens, source);
-            continue;
-        }
-
-        if ((source_board & map.getBishopAttacks(king_square, opponent_pieces)) > 0) {
-            queen_bishop_mask |= map.getBishopAttacks(source, pieces);
-        }
-        if ((source_board & map.getRookAttacks(king_square, opponent_pieces)) > 0) {
-            queen_rook_mask |= map.getRookAttacks(source, pieces);
-        }
-
-        bit.popBit(&queens, source);
-        queen_rook_mask &= map.getRookAttacks(king_square, source_board);
-        queen_bishop_mask &= map.getBishopAttacks(king_square, source_board);
-    }
-
-    return bishop_mask | rook_mask | queen_rook_mask | queen_bishop_mask;
 }
+
 
 pub inline fn getCheckMask() u64 {
     const opponent_side: u1 = if (side == 0) 1 else 0;
@@ -198,151 +165,191 @@ pub inline fn getCheckMask() u64 {
     return mask;
 }
 
+
 pub inline fn pawnMoves() !void {
     const piece = if (side == 0) brd.Pieces.P else brd.Pieces.p;
-    const direction: i8 = if (side == 0) -8 else 8;
-    const promotion_rank: u4 = if (side == 0) 7 else 2;
-    const double_rank: u4 = if (side == 0) 2 else 7;
-    var bitBoard: u64 = if (side == 0) board.wPawns else board.bPawns;
-    const opponent_pieces: u64 = if (side == 0) board.bPieces() else board.wPieces();
-    const king_board = if (side == 0) board.wKing else board.bKing;
-    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
+    const pawns: u64 = if (side == 0) board.wPawns else board.bPawns;
+    const their_pieces = if (side == 0) board.bPieces() else board.wPieces();
+    const empty = ~board.allPieces();
+    const rank7: u64 = if (side == 0)
+        @as(u64, 0x00FF000000000000)
+    else
+        @as(u64, 0x000000000000FF00);
+    const rank2: u64 = if (side == 0)
+        @as(u64, 0x00FF000000000000)
+    else
+        @as(u64, 0x000000000000FF00);
 
-    while (bitBoard > 0) {
-        const source: u6 = @intCast(bit.leastSignificantBit(bitBoard));
-        const ep_square: u6 = @truncate(bit.leastSignificantBit(board.enPassantSquare));
-        bit.popBit(&bitBoard, source);
-        if (source == 64) break;
+    const king_sq: u6 = @intCast(bit.leastSignificantBit(if (side == 0) board.wKing else board.bKing));
+    const ep_sq: u6 = @truncate(bit.leastSignificantBit(board.enPassantSquare));
+    const ep_bb: u64 = board.enPassantSquare;
 
-        const rank: u4 = @intCast(8 - (source / 8));
-        var target: u6 = @intCast(source + direction);
-        if (target < 0) continue;
+    const forward_shift: isize = if (side == 0) -8 else 8;
+    const double_shift: isize = if (side == 0) -16 else 16;
 
-        var target_board = @as(u64, 1) << target;
-        if (!captures_only) {
-            const source_board = @as(u64, 1) << source;
-            const double_board = if (rank == double_rank) @as(u64, 1) << @intCast(target + direction) else 0;
-            var single_possible = true;
-            var double_possible = true;
-            var piece_pinned = false;
+    // -------------------
+    // Single pushes
+    // -------------------
+    const single_pushes = if (side == 0)
+        (pawns >> 8) & empty
+    else
+        (pawns << 8) & empty;
 
-            if (check_mask > 0) {
-                if ((check_mask & target_board) == 0) single_possible = false;
-                if ((check_mask & double_board) == 0) double_possible = false;
-            }
+    var single = single_pushes;
+    if (check_mask > 0){
+        single &= check_mask;
+    }
 
-            if ((pin_mask & source_board) > 0) {
-                var board_copy = board.*;
-                if (side == 0) {
-                    bit.popBit(&board_copy.wPawns, source);
-                    bit.setBit(&board_copy.wPawns, target);
-                } else {
-                    bit.popBit(&board_copy.bPawns, source);
-                    bit.setBit(&board_copy.bPawns, target);
-                }
+    while (single != 0) {
+        const to: u6 = @intCast(bit.leastSignificantBit(single));
+        const from: u6 = @intCast(@as(i16, to) - forward_shift);
+        bit.popBit(&single, to);
 
-                if (board_copy.isSquareAttacked(king_square, side) > 0) piece_pinned = true;
-            }
+        if (pin_masks[from] != 0 and (pin_masks[from] & (@as(u64, 1) << to)) == 0)
+            continue;
 
-            var piece_at_target: bool = target_board & board.allPieces() > 0;
-            if (!piece_at_target and !piece_pinned) {
-                if (rank == promotion_rank and single_possible) {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .Q });
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .R });
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .B });
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N });
-                } else {
-                    if (single_possible) {
-                        try list.append(Move{ .source = source, .target = target, .piece = piece });
-                    }
-
-                    if (rank == double_rank and double_possible) {
-                        // Double pawn push
-                        piece_at_target = bit.getBit(board.allPieces(), @intCast(target + direction)) > 0;
-                        if (!piece_at_target) {
-                            try list.append(Move{ .source = source, .target = @intCast(target + direction), .piece = piece, .isDoublePush = true });
-                        }
-                    }
-                }
-            }
+        const is_promo = ((@as(u64, 1) << to) & rank7) != 0;
+        if (is_promo) {
+            try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .Q });
+            try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .R });
+            try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .B });
+            try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .N });
+        } else {
+            try list.append(.{ .source = from, .target = to, .piece = piece });
         }
+    }
 
-        var attack_map = map.pawn_attacks[side][source];
-        attack_map &= (opponent_pieces | board.enPassantSquare);
-        while (attack_map > 0) {
-            target = @intCast(bit.leastSignificantBit(attack_map));
-            target_board = @as(u64, 1) << target;
-            bit.popBit(&attack_map, @intCast(target));
+    // -------------------
+    // Double pushes
+    // -------------------
+    var doubles = if (side == 0)
+        (((pawns & rank2) >> 8) & empty) >> 8 & empty
+    else
+        (((pawns & rank2) << 8) & empty) << 8 & empty;
 
-            var board_copy = board.*;
-            board_copy.updateBoard(piece, source, target, side, target == ep_square);
-            if (board_copy.isSquareAttacked(king_square, side) > 0) continue;
+    if (check_mask > 0){
+        doubles &= check_mask;
+    }
+    while (doubles != 0) {
+        const to: u6 = @intCast(bit.leastSignificantBit(doubles));
+        const from: u6 = @intCast(@as(i16, to) - double_shift);
+        bit.popBit(&doubles, to);
 
-            if (rank == promotion_rank) {
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .Q, .isCapture = true });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .R, .isCapture = true });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .B, .isCapture = true });
-                try list.append(Move{ .source = source, .target = target, .piece = piece, .promotion = .N, .isCapture = true });
+        if (pin_masks[from] != 0 and (pin_masks[from] & (@as(u64, 1) << to)) == 0)
+            continue;
+
+        try list.append(.{ .source = from, .target = to, .piece = piece, .isDoublePush = true });
+    }
+
+    // -------------------
+    // Captures
+    // -------------------
+    const left: u64 = if (side == 0)
+        (pawns >> 7) & ~@as(u64, 0x8080808080808080)
+    else
+        (pawns << 9) & ~@as(u64, 0x0101010101010101);
+
+    const right: u64 = if (side == 0)
+        (pawns >> 9) & ~@as(u64, 0x0101010101010101)
+    else
+        (pawns << 7) & ~@as(u64, 0x8080808080808080);
+
+    const attacks = (left | right) & (their_pieces | ep_bb) & check_mask;
+
+    var captures = attacks;
+    while (captures != 0) {
+        const to: u6 = @intCast(bit.leastSignificantBit(captures));
+        bit.popBit(&captures, to);
+
+        const target_bb = @as(u64, 1) << to;
+        const is_left = (left & target_bb) != 0;
+
+        const from = if (side == 0)
+            if (is_left) to - 7 else to - 9
+        else
+            if (is_left) to + 9 else to + 7;
+
+        if (to != ep_sq and (their_pieces & target_bb) == 0) continue;
+        if (pin_masks[from] != 0 and (pin_masks[from] & target_bb) == 0)
+            continue;
+
+        if (to == ep_sq) {
+            var bcopy = board.*;
+            bcopy.updateBoard(piece, from, to, side, true);
+            if (bcopy.isSquareAttacked(king_sq, side) != 0) continue;
+
+            try list.append(.{
+                .source = from,
+                .target = to,
+                .piece = piece,
+                .isCapture = true,
+                .isEnPassant = true,
+            });
+        } else {
+            const is_promo = (target_bb & rank7) != 0;
+            if (is_promo) {
+                try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .Q, .isCapture = true });
+                try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .R, .isCapture = true });
+                try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .B, .isCapture = true });
+                try list.append(.{ .source = from, .target = to, .piece = piece, .promotion = .N, .isCapture = true });
             } else {
-                if (target == ep_square) {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true, .isEnPassant = true });
-                } else {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
-                }
+                try list.append(.{ .source = from, .target = to, .piece = piece, .isCapture = true });
             }
         }
     }
 }
 
+
+
 pub inline fn pieceMoves() !void {
-    const piece_list: [5]brd.Pieces = if (side == 0) [5]brd.Pieces{ .N, .B, .R, .Q, .K } else [5]brd.Pieces{ .n, .b, .r, .q, .k };
-    const occupancy = if (side == 0) board.wPieces() else board.bPieces();
-    const opponent_pieces = board.allPieces() ^ occupancy;
-    const king_board = if (side == 0) board.wKing else board.bKing;
-    const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
+    var pieces = if (side == 0) board.wPieces() else board.bPieces();
+    const opponent_pieces = if (side == 0) board.bPieces() else board.wPieces();
+    // const king_square: u6 = @intCast(bit.leastSignificantBit(
+    //     if (side == 0) board.wKing else board.bKing
+    // ));
+    pieces &= ~(board.bPawns | board.wPawns);
 
-    for (0..5) |index| {
-        const piece = piece_list[index];
-        var bitBoard = board.getPieceBitBoard(piece).*;
+    for (0..64) |source_u6| {
+        const source: u6 = @intCast(source_u6);
 
-        while (bitBoard > 0) {
-            const source: u6 = @intCast(bit.leastSignificantBit(bitBoard));
-            const source_board = @as(u64, 1) << source;
-            bit.popLSB(&bitBoard);
-            var targets = board.getPieceAttacks(piece, source, side);
-            if (captures_only) targets &= opponent_pieces;
+        const source_board = @as(u64, 1) << source;
+        if ((pieces & source_board) == 0) continue;
 
-            if (check_mask > 0 and piece != .K and piece != .k) {
-                targets &= check_mask;
+        const piece = board.GetPieceAtSquare(source);
+        if (piece == null) continue;
+        if (piece.? == .P or piece == .p or piece.? == .K or piece.? == .k ) continue;
+
+        var targets = board.getPieceAttacks(piece.?, source, side);
+        if (captures_only) targets &= opponent_pieces;
+
+        if (check_mask > 0 and piece.? != .K and piece.? != .k) {
+            targets &= check_mask;
+        }
+
+        const pin_mask_piece = pin_masks[source];
+        if (pin_mask_piece != 0 and piece.? != .K and piece.? != .k) {
+            targets &= pin_mask_piece;
+        }
+
+        while (targets > 0) {
+            const target: u6 = @intCast(bit.leastSignificantBit(targets));
+            bit.popBit(&targets, target);
+            const target_board = @as(u64, 1) << target;
+
+            if ((piece.? == .K or piece.? == .k) and board.isSquareAttacked(target, side) > 0) {
+                continue;
+            }
+            if ((piece.? != .K and piece.? != .k) and pin_mask_piece != 0 and (pin_mask_piece & target_board) == 0) {
+                continue;
             }
 
-            while (targets > 0) {
-                const target: u6 = @intCast(bit.leastSignificantBit(targets));
-                bit.popBit(&targets, target);
-                const target_board = @as(u64, 1) << target;
-
-                if (check_mask > 0 and piece != .K and piece != .k) {
-                    if (check_mask & target_board == 0) {
-                        continue;
-                    }
-                }
-
-                if ((pin_mask & source_board) > 0 or piece == .K or piece == .k) {
-                    var board_copy = board.*;
-                    board_copy.updateBoard(piece, source, target, side, false);
-                    if (piece == .K or piece == .k) {
-                        if (board_copy.isSquareAttacked(target, side) > 0) continue;
-                    } else {
-                        if (board_copy.isSquareAttacked(king_square, side) > 0) continue;
-                    }
-                }
-
-                if (target_board & opponent_pieces > 0) {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece, .isCapture = true });
-                } else {
-                    try list.append(Move{ .source = source, .target = target, .piece = piece });
-                }
-            }
+            const is_capture = (target_board & opponent_pieces) > 0;
+            try list.append(Move{
+                .source = source,
+                .target = target,
+                .piece = piece.?,
+                .isCapture = is_capture
+            });
         }
     }
 }
@@ -382,66 +389,71 @@ pub inline fn kingMoves() !void {
     }
 }
 
+
 pub inline fn castleMoves() !void {
     const piece = if (side == 0) brd.Pieces.K else brd.Pieces.k;
-    const rooks = if (side == 0) board.wRooks else board.bRooks;
-    const king = if (side == 0) board.wKing else board.bKing;
-    const at_home_square: bool = (side == 1 and king == (1 << 4)) or (side == 0 and king == (1 << 60));
-    if (!at_home_square) return;
 
-    if (side == 0) {
-        const king_side_rook: bool = (rooks & (map.FILE_H & map.RANK_1)) > 0;
-        const queen_side_rook: bool = (rooks & (map.FILE_A & map.RANK_1)) > 0;
-        const b1 = sqr.Square.toIndex(.B1);
-        const c1 = sqr.Square.toIndex(.C1);
-        const d1 = sqr.Square.toIndex(.D1);
-        const f1 = sqr.Square.toIndex(.F1);
-        const g1 = sqr.Square.toIndex(.G1);
-        if (board.castle & 1 > 0) {
-            const king_side_castle_empty = bit.getBit(board.allPieces(), f1) == 0 and bit.getBit(board.allPieces(), g1) == 0;
-            const king_side_castle_attacked = board.isSquareAttacked(f1, 0) > 0 or board.isSquareAttacked(g1, 0) > 0;
-            if (king_side_rook and king_side_castle_empty and !king_side_castle_attacked) {
-                try list.append(Move{
-                    .source = 60,
-                    .target = 62,
-                    .piece = piece,
-                    .castle = .WK,
-                });
-            }
+    const CastleParams = struct {
+        king_sq: u6,
+        rights: u4,
+        rook_mask: u64,
+        w_rook_squares: struct { kingside: u6, queenside: u6 },
+        f_sq: u6, g_sq: u6, d_sq: u6, c_sq: u6, b_sq: u6,
+    };
+
+    const params: CastleParams = if (side == 0)
+        .{
+            .king_sq = 60,
+            .rights = board.castle & 0b0011,
+            .rook_mask = board.wRooks,
+            .w_rook_squares = .{ .kingside = 63, .queenside = 56 },
+            .f_sq = 61, .g_sq = 62, .d_sq = 59, .c_sq = 58, .b_sq = 57,
         }
-        if (board.castle & 2 > 0) {
-            const queen_side_castle_empty = bit.getBit(board.allPieces(), b1) == 0 and bit.getBit(board.allPieces(), c1) == 0 and bit.getBit(board.allPieces(), d1) == 0;
-            const queen_side_castle_attacked = board.isSquareAttacked(c1, 0) > 0 or board.isSquareAttacked(d1, 0) > 0;
-            if (queen_side_rook and queen_side_castle_empty and !queen_side_castle_attacked) {
-                try list.append(Move{
-                    .source = 60,
-                    .target = 58,
-                    .piece = piece,
-                    .castle = .WQ,
-                });
-            }
+    else
+        .{
+            .king_sq = 4,
+            .rights = (board.castle & 0b1100) >> 2,
+            .rook_mask = board.bRooks,
+            .w_rook_squares = .{ .kingside = 7, .queenside = 0 },
+            .f_sq = 5, .g_sq = 6, .d_sq = 3, .c_sq = 2, .b_sq = 1,
+        };
+
+    if (bit.getBit(board.allPieces(), params.king_sq) == 0) return;
+
+    const occupied = board.allPieces();
+
+    // Kingside castle
+    if ((params.rights & 0b01) != 0 and bit.getBit(params.rook_mask, params.w_rook_squares.kingside) != 0) {
+        if (!(bit.getBit(occupied, params.f_sq) > 0) and
+            !(bit.getBit(occupied, params.g_sq) > 0) and
+            !(board.isSquareAttacked(params.king_sq, side) > 0) and
+            !(board.isSquareAttacked(params.f_sq, side) > 0) and
+            !(board.isSquareAttacked(params.g_sq, side) > 0))
+        {
+            try list.append(Move{
+                .source = params.king_sq,
+                .target = params.g_sq,
+                .piece = piece,
+                .castle = if (side == 0) .WK else .BK,
+            });
         }
-    } else {
-        const king_side_rook: bool = (rooks & (map.FILE_H & map.RANK_8)) > 0;
-        const queen_side_rook: bool = (rooks & (map.FILE_A & map.RANK_8)) > 0;
-        const b8 = sqr.Square.toIndex(.B8);
-        const c8 = sqr.Square.toIndex(.C8);
-        const d8 = sqr.Square.toIndex(.D8);
-        const f8 = sqr.Square.toIndex(.F8);
-        const g8 = sqr.Square.toIndex(.G8);
-        if (board.castle & 4 > 0) {
-            const king_side_castle_empty = bit.getBit(board.allPieces(), f8) == 0 and bit.getBit(board.allPieces(), g8) == 0;
-            const king_side_castle_attacked = board.isSquareAttacked(f8, 1) > 0 or board.isSquareAttacked(g8, 1) > 0;
-            if (king_side_rook and king_side_castle_empty and !king_side_castle_attacked) {
-                try list.append(Move{ .source = 4, .target = 6, .piece = piece, .castle = .BK });
-            }
-        }
-        if (board.castle & 8 > 0) {
-            const queen_side_castle_empty = bit.getBit(board.allPieces(), b8) == 0 and bit.getBit(board.allPieces(), c8) == 0 and bit.getBit(board.allPieces(), d8) == 0;
-            const queen_side_castle_attacked = board.isSquareAttacked(c8, 1) > 0 or board.isSquareAttacked(d8, 1) > 0;
-            if (queen_side_rook and queen_side_castle_empty and !queen_side_castle_attacked) {
-                try list.append(Move{ .source = 4, .target = 2, .piece = piece, .castle = .BQ });
-            }
+    }
+
+    // Queenside castle
+    if ((params.rights & 0b10) != 0 and bit.getBit(params.rook_mask, params.w_rook_squares.queenside) != 0) {
+        if (!(bit.getBit(occupied, params.d_sq) > 0) and
+            !(bit.getBit(occupied, params.c_sq) > 0) and
+            !(bit.getBit(occupied, params.b_sq) > 0) and
+            !(board.isSquareAttacked(params.king_sq, side) > 0) and
+            !(board.isSquareAttacked(params.d_sq, side) > 0) and
+            !(board.isSquareAttacked(params.c_sq, side) > 0))
+        {
+            try list.append(Move{
+                .source = params.king_sq,
+                .target = params.c_sq,
+                .piece = piece,
+                .castle = if (side == 0) .WQ else .BQ,
+            });
         }
     }
 }

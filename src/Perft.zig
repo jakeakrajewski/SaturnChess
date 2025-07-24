@@ -35,9 +35,11 @@ pub fn perft(board: *brd.Board, startDepth: u8, depth: u8, side: u1, allocator: 
             const m = moves.items[i];
             var start = try sqr.Square.FromIndex(m.source);
             var end = try sqr.Square.FromIndex(m.target);
-            std.debug.print("Piece: {}", .{m.piece});
-            std.debug.print("Start: {s}", .{start.toString()});
-            std.debug.print("End: {s}", .{end.toString()});
+            std.debug.print("\nPiece: {}", .{m.piece});
+            std.debug.print("\nStart: {s}", .{start.toString()});
+            std.debug.print("\nEnd: {s}", .{end.toString()});
+            std.debug.print("\nCapture: {}", .{m.isCapture});
+            std.debug.print("\nEn Passant: {}", .{m.isEnPassant});
             bit.print(board.allPieces());
             @panic("Illegal Move");
         }
