@@ -159,8 +159,6 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     if (ply > max_ply - 1) {
         return eval.evaluate(board.*);
     }
-    var moves = std.ArrayList(mv.Move).init(moveList.allocator);
-    defer moves.deinit();
 
     const king_board = if (board.sideToMove == 0) board.wKing else board.bKing;
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
@@ -184,6 +182,8 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         }
     }
 
+    var moves = std.ArrayList(mv.Move).init(moveList.allocator);
+    defer moves.deinit();
     try mv.generateMoves(&moves, board, board.sideToMove);
     if (follow_pv == 1) {
         enablePVScoring(&moves);
@@ -222,6 +222,7 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
         } else {
             // Late Move Reduction
             if (moves_searched >= 4 and
+                !is_pv_node and
                 ply >= 3 and
                 !move.isCapture and
                 board.isSquareAttacked(king_square, board.sideToMove) == 0 and

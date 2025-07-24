@@ -520,7 +520,7 @@ pub inline fn makeMove(move: Move, b: *brd.Board, s: u1) bool {
     const source = board.getPieceBitBoard(move.piece);
     const source_square = move.source;
     const target_square = move.target;
-    const ep_square = bit.leastSignificantBit(board.enPassantSquare);
+    const ep_square = @ctz(board.enPassantSquare);
     bit.popBit(&board.enPassantSquare, @truncate(ep_square));
     bit.popBit(source, move.source);
     if (move.promotion == .X) {
@@ -692,7 +692,7 @@ pub inline fn makeMove(move: Move, b: *brd.Board, s: u1) bool {
             }
         }
     }
-    const king_square = if (side == 0) bit.leastSignificantBit(board.wKing) else bit.leastSignificantBit(board.bKing);
+    const king_square = if (side == 0) @ctz(board.wKing) else @ctz(board.bKing);
     if (board.isSquareAttacked(@intCast(king_square), side) > 0) {
         return false;
     }

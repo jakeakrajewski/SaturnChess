@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Remove the zig-cache directory
+cd ../SaturnBuilds/
+
+# Build the project using Zig
+zig build-exe ../SaturnChess/Main.zig -O ReleaseFast
+
+cd ../SaturnChess/
+
+# sleep 0.5
+# Run the compiled binary
+# ./zig-out/bin/Rogue
+
