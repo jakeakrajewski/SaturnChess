@@ -2,4 +2,6 @@
 Main
 Main.o
 Main.exe
+zig-out
+.zig-cache
 
