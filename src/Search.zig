@@ -8,6 +8,8 @@ const eval = @import("Evaluate.zig");
 const zob = @import("Zobrist.zig");
 const uci = @import("UCI.zig");
 
+pub const config = @import("main.zig").config;
+
 pub const inifintity: i64 = 50000;
 const max_ply = 64;
 var nodes: i64 = 0;
@@ -72,7 +74,7 @@ pub fn Search(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: u8, t
 
         // Use pv_table from previous depth if search ends early
         prev_pv_table = pv_table;
-        follow_pv = 1;
+        if (config.pv_tables) follow_pv = 1;
         var score = try negaScout(b, moveList, @intCast(d), alpha, beta);
 
         // Aspiration Window Adjustments
@@ -141,11 +143,14 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     // Determine if current node is PV
     const is_pv_node = b - a > 1;
 
+    var score: i64 = 0;
     // Search Transposition Tables For Current Position
-    var score = zob.probeTT(board.*, &transposition_tables, depth, a, b, ply);
-    if (ply > 0 and score != 100000 and !is_pv_node) {
-        pv_length[ply] = ply;
-        return score;
+    if (config.transposition_tables){
+        score = zob.probeTT(board.*, &transposition_tables, depth, a, b, ply);
+        if (ply > 0 and score != 100000 and !is_pv_node) {
+            pv_length[ply] = ply;
+            return score;
+        }
     }
 
     pv_length[ply] = ply;
@@ -164,21 +169,23 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
     const king_square: u6 = @intCast(bit.leastSignificantBit(king_board));
 
     // Null Move Heuristic
-    if (depth >= 3 and
-        board.isSquareAttacked(king_square, board.sideToMove) == 0 and
-        ply > 0 and
-        !eval.isEndGame(board.*))
-    {
-        var null_copy = board.*;
-        ply += 1;
-        null_copy.sideToMove = if (null_copy.sideToMove == 1) 0 else 1;
-        null_copy.enPassantSquare = 0;
-        null_copy.hashKey ^= zob.side_key;
-        if (board.enPassantSquare != 0) null_copy.hashKey ^= zob.enpassant_keys[bit.leastSignificantBit(board.enPassantSquare)];
-        const temp_score = -(try negaScout(&null_copy, moveList, depth - 3, -beta, -beta + 1));
-        ply -= 1;
-        if (temp_score >= beta) {
-            return beta;
+    if (config.null_move){
+        if (depth >= 3 and
+            board.isSquareAttacked(king_square, board.sideToMove) == 0 and
+            ply > 0 and
+            !eval.isEndGame(board.*))
+        {
+            var null_copy = board.*;
+            ply += 1;
+            null_copy.sideToMove = if (null_copy.sideToMove == 1) 0 else 1;
+            null_copy.enPassantSquare = 0;
+            null_copy.hashKey ^= zob.side_key;
+            if (board.enPassantSquare != 0) null_copy.hashKey ^= zob.enpassant_keys[bit.leastSignificantBit(board.enPassantSquare)];
+            const temp_score = -(try negaScout(&null_copy, moveList, depth - 3, -beta, -beta + 1));
+            ply -= 1;
+            if (temp_score >= beta) {
+                return beta;
+            }
         }
     }
 
@@ -221,22 +228,24 @@ fn negaScout(board: *brd.Board, moveList: *std.ArrayList(mv.Move), depth: i8, a:
             score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
         } else {
             // Late Move Reduction
-            if (moves_searched >= 4 and
-                !is_pv_node and
-                ply >= 3 and
-                !move.isCapture and
-                board.isSquareAttacked(king_square, board.sideToMove) == 0 and
-                !move.isPromotion())
-            {
-                score = -(try negaScout(&board_copy, moveList, depth - 2, -alpha - 1, -alpha));
-            } else {
-                score = alpha + 1;
-            }
+            if (config.late_move){
+                if (moves_searched >= 4 and
+                    !is_pv_node and
+                    ply >= 3 and
+                    !move.isCapture and
+                    board.isSquareAttacked(king_square, board.sideToMove) == 0 and
+                    !move.isPromotion())
+                {
+                    score = -(try negaScout(&board_copy, moveList, depth - 2, -alpha - 1, -alpha));
+                } else {
+                    score = alpha + 1;
+                }
 
-            if (score > alpha) {
-                score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
-                if (score > alpha and score < beta) {
-                    score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+                if (score > alpha) {
+                    score = -(try negaScout(&board_copy, moveList, depth - 1, -alpha - 1, -alpha));
+                    if (score > alpha and score < beta) {
+                        score = -(try negaScout(&board_copy, moveList, depth - 1, -beta, -alpha));
+                    }
                 }
             }
         }
@@ -380,7 +389,7 @@ fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
     if (move.isCapture) {
         const m = board.GetPieceAtSquare(move.target);
         if (m) |_| {
-            score += staticExchangeDriver(move, board) + 10000;
+            if (config.static_exchange) score += staticExchangeDriver(move, board) + 10000;
         } else {
             const ep_square = board.getEpSquare();
             if (ep_square) |ep| {
@@ -393,9 +402,13 @@ fn scoreMove(move: mv.Move, board: *brd.Board) !i32 {
             }
         }
     } else {
+        if (config.killer_moves){
         if (killer_moves[ply][0].Equals(move)) return 9000;
         if (killer_moves[ply][1].Equals(move)) return 8000;
-        return history_moves[move.target][@intFromEnum(move.piece)];
+        }
+        if (config.history){
+            return history_moves[move.target][@intFromEnum(move.piece)];
+        }
     }
 
     return score;

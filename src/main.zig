@@ -13,6 +13,8 @@ const builtin = @import("builtin");
 const zob = @import("Zobrist.zig");
 const ser = @import("Search.zig");
 
+pub const config = @import("engine_config").config;
+
 pub fn main() !void {
     try map.initializeAttackTables();
     try uci.uciLoop();

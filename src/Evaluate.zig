@@ -9,6 +9,8 @@ const mv = @import("Moves.zig");
 const perft = @import("Perft.zig");
 const uci = @import("UCI.zig");
 
+const config = @import("main.zig").config;
+
 var phase: f32 = 0.0;
 var end_game: bool = false;
 pub var board: brd.Board = undefined;
@@ -22,11 +24,11 @@ pub inline fn evaluate(b: brd.Board) i64 {
     const mid_game_material: f32 = @floatFromInt(materialScoreMG());
     const end_game_material: f32 = @floatFromInt(materialScoreEG());
     const material_score: i64 = @intFromFloat(phase * end_game_material + (1.0 - phase) * mid_game_material);
-    score += material_score;
+    if (config.material_score) score += material_score;
     score += scorePawns(0) - scorePawns(1);
-    score += pawnSquareScore();
+    if (config.pawn_square_score) score += pawnSquareScore();
     score += scorePieces();
-    score += space();
+    if (config.space_score) score += space();
     return if (board.sideToMove == 0) score else -score;
 }
 
@@ -282,10 +284,10 @@ pub fn scorePawns(side: u1) i64 {
     var score: i64 = 0;
     const pawns = if (side == 0) board.wPawns else board.bPawns;
     const opponent_pawns = if (side == 0) board.bPawns else board.wPawns;
-    score -= 10 * countIsolatedPawns(pawns);
-    score -= 5 * countBackwardPawns(pawns, opponent_pawns, side);
-    score -= 10 * (bit.bitCount(getDoubledPawns(pawns)));
-    score += 2 * countConnectedPawns(pawns);
+    if (config.isolated_pawns) score -= 5 * countIsolatedPawns(pawns); //Down from 10
+    if (config.backwards_pawns) score -= 5 * countBackwardPawns(pawns, opponent_pawns, side);
+    if (config.doubled_pawns) score -= 10 * (bit.bitCount(getDoubledPawns(pawns)));
+    if (config.connected_pawns) score += 2 * countConnectedPawns(pawns);
     // score += 10 * (bit.bitCount(getPassedPawns(pawns, opponent_pawns, board.sideToMove)));
     return score;
 }
@@ -406,51 +408,52 @@ pub fn scorePieces() i64 {
         const mg_psqt: f32 = @floatFromInt(knight_mg_psv[square]);
         const eg_psqt: f32 = @floatFromInt(knight_eg_psv[square]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score += psqt_score;
+        if (config.piece_square_tables) score += psqt_score;
     }
     while (b.wBishops > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wBishops));
         bit.popBit(&b.wBishops, (@intCast(square)));
         // Bishop Targeting King Ring
         const attack_mask = map.getBishopAttacks(square, board.allPieces());
-        if (attack_mask & map.king_attacks[black_king_square] > 0) score += 5;
+        if (config.bishop_king_ring) {if (attack_mask & map.king_attacks[black_king_square] > 0) score += 5;}
         // Bishop Mobility
-        score += 1 * (bit.bitCount(attack_mask));
+        if (config.mobility) score += 1 * (bit.bitCount(attack_mask));
         // Bishop Piece Square Value
         const mg_psqt: f32 = @floatFromInt(bishop_mg_psv[square]);
         const eg_psqt: f32 = @floatFromInt(bishop_eg_psv[square]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score += psqt_score;
+        if (config.piece_square_tables) score += psqt_score;
     }
     while (b.wRooks > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wRooks));
         bit.popBit(&b.wRooks, (@intCast(square)));
         // Rook Targeting King Ring
         const attack_mask = map.getRookAttacks(square, board.allPieces());
-        if (attack_mask & map.king_attacks[black_king_square] > 0) score += 15;
+        if (config.rook_king_ring){if (attack_mask & map.king_attacks[black_king_square] > 0) score += 5;} //Down from 15
+        if (config.mobility) score += 1 * (bit.bitCount(attack_mask));
         // Rook on (Any) Queen File
         const file = map.getSquareFile(square);
-        if (file & (board.wQueens | board.bQueens) > 0) score += 5;
+        if (config.rook_on_queen) {if (file & (board.wQueens | board.bQueens) > 0) score += 1;} //Down from 5
         // Rook on Semi-Open or Open File
-        score += if (file & board.wPawns & board.bPawns == 0) 50 else if (file & board.wPawns == 0) 15 else 0;
-        score += 1 * (bit.bitCount(attack_mask));
+        if (config.rook_open){
+            score += if (file & board.wPawns & board.bPawns == 0) 50 else if (file & board.wPawns == 0) 15 else 0;
+        }
         // Rook Piece Square Value
-
         const mg_psqt: f32 = @floatFromInt(rook_mg_psv[square]);
         const eg_psqt: f32 = @floatFromInt(rook_eg_psv[square]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score += psqt_score;
+        if (config.piece_square_tables) score += psqt_score;
     }
     while (b.wQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.wQueens));
         bit.popBit(&b.wQueens, (@intCast(square)));
         // Queen Mobility Value
-        score += 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
+        if(config.mobility) score += 1 * (bit.bitCount(map.generateQueenAttacks(square, board.allPieces())));
         //Queen Piece Square Value
         const mg_psqt: f32 = @floatFromInt(queen_mg_psv[square]);
         const eg_psqt: f32 = @floatFromInt(queen_eg_psv[square]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score += psqt_score;
+        if (config.piece_square_tables) score += psqt_score;
     }
     while (b.bKnights > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bKnights));
@@ -459,39 +462,39 @@ pub fn scorePieces() i64 {
         const mg_psqt: f32 = @floatFromInt(knight_mg_psv[mirrorIndex(square)]);
         const eg_psqt: f32 = @floatFromInt(knight_eg_psv[mirrorIndex(square)]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score -= psqt_score;
+        if (config.piece_square_tables) score -= psqt_score;
     }
     while (b.bBishops > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bBishops));
         bit.popBit(&b.bBishops, (@intCast(square)));
         // Black Bishop Targeting King Ring
         const attack_mask = map.getBishopAttacks(square, board.allPieces());
-        if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 5;
+        if (config.bishop_king_ring) {if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 5;}
         // Black Bishop Mobility
-        score -= 1 * (bit.bitCount(attack_mask));
+        if (config.mobility) score -= 1 * (bit.bitCount(attack_mask));
         // Black Bishop Piece Square Values
         const mg_psqt: f32 = @floatFromInt(bishop_mg_psv[mirrorIndex(square)]);
         const eg_psqt: f32 = @floatFromInt(bishop_eg_psv[mirrorIndex(square)]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score -= psqt_score;
+        if (config.piece_square_tables)score -= psqt_score;
     }
     while (b.bRooks > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bRooks));
         bit.popBit(&b.bRooks, (@intCast(square)));
         // Black Rook Targeting King Ring
         const attack_mask = map.getRookAttacks(square, board.allPieces());
-        if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 15;
+        if (config.rook_king_ring){if (attack_mask & map.king_attacks[white_king_square] > 0) score -= 5;}// Down from 15
         // Black Rook on (Any) Queen File
         const file = map.getSquareFile(square);
-        if (file & (board.wQueens | board.bQueens) > 0) score -= 5;
+        if (config.rook_on_queen) {if (file & (board.wQueens | board.bQueens) > 0) score -= 1;} //Down from 5
         // Black Rook on Semi-Open or Open File
-        score -= if (file & board.wPawns & board.bPawns == 0) 50 else if (file & board.bPawns == 0) 15 else 0;
-        score -= 1 * (bit.bitCount(attack_mask));
+        if (config.rook_open) score -= if (file & board.wPawns & board.bPawns == 0) 50 else if (file & board.bPawns == 0) 15 else 0;
+        if (config.mobility) score -= 1 * (bit.bitCount(attack_mask));
         // Black Rook Piece Square Value
         const mg_psqt: f32 = @floatFromInt(rook_mg_psv[mirrorIndex(square)]);
         const eg_psqt: f32 = @floatFromInt(rook_eg_psv[mirrorIndex(square)]);
         const psqt_score: i64 = @intFromFloat(phase * eg_psqt + (1.0 - phase) * mg_psqt);
-        score -= psqt_score;
+        if (config.piece_square_tables) score -= psqt_score;
     }
     while (b.bQueens > 0) {
         const square: u6 = @intCast(bit.leastSignificantBit(b.bQueens));
@@ -507,37 +510,41 @@ pub fn scorePieces() i64 {
 
     const white_minor_behind_pawns = 20 * bit.bitCount((b.wPawns << 8) & (b.wKnights | b.wBishops));
     const black_minor_behind_pawns = 20 * bit.bitCount((b.bPawns >> 8) & (b.bKnights | b.bBishops));
-    score += white_minor_behind_pawns - black_minor_behind_pawns;
+    if (config.minor_behind) score += white_minor_behind_pawns - black_minor_behind_pawns;
 
     // Bishop Pair Imbalance
     const white_bishop_pair = bit.bitCount(board.wBishops) > 1;
     const black_bishop_pair = bit.bitCount(board.bBishops) > 1;
 
-    if (white_bishop_pair and !black_bishop_pair) {
-        score += 15;
-    } else if (black_bishop_pair and !white_bishop_pair) {
-        score -= 15;
+    if (config.bishop_pair){
+        if (white_bishop_pair and !black_bishop_pair) {
+            score += 15;
+        } else if (black_bishop_pair and !white_bishop_pair) {
+            score -= 15;
+        }
     }
 
     // Bishops On Long Diagonals
-    score += 40 * bit.bitCount(board.wBishops & (map.a1_diagonal | map.h1_diagonal));
-    score -= 40 * bit.bitCount(board.bBishops & (map.a1_diagonal | map.h1_diagonal));
+    if (config.long_bishops){
+        score += 10 * bit.bitCount(board.wBishops & (map.a1_diagonal | map.h1_diagonal)); //Down from 40
+        score -= 10 * bit.bitCount(board.bBishops & (map.a1_diagonal | map.h1_diagonal)); //Down from 40
+    }
 
     // King Piece Square Value
-    score += if (end_game) king_eg_psv[white_king_square] else king_mg_psv[white_king_square];
+    if (config.piece_square_tables) score += if (end_game) king_eg_psv[white_king_square] else king_mg_psv[white_king_square];
     // King Safety
-    score += 1 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());
+    if (config.king_safety) {if (!end_game) score += 1 * bit.bitCount(map.king_attacks[white_king_square] & board.wPieces());}
     // King Piece On Semi-Open or Open File (deduction)
     const white_king_file = map.getSquareFile(white_king_square);
-    score -= if (white_king_file & board.wPawns & board.bPawns == 0) 15 else if (white_king_file & board.wPawns == 0) 10 else 0;
+    if (config.open_king) score -= if (white_king_file & board.wPawns & board.bPawns == 0) 15 else if (white_king_file & board.wPawns == 0) 10 else 0;
 
     // Black King Piece Square Value
-    score -= if (end_game) king_eg_psv[mirrorIndex(black_king_square)] else king_mg_psv[mirrorIndex(black_king_square)];
+    if (config.piece_square_tables) score -= if (end_game) king_eg_psv[mirrorIndex(black_king_square)] else king_mg_psv[mirrorIndex(black_king_square)];
     // Black King Safety
-    score -= 1 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());
+    if (config.king_safety) {if (!end_game) score -= 1 * bit.bitCount(map.king_attacks[black_king_square] & board.bPieces());}
     // Black King Piece On Semi-Open or Open File (deduction)
     const black_king_file = map.getSquareFile(black_king_square);
-    score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
+    if (config.open_king) score += if (black_king_file & board.wPawns & board.bPawns == 0) 15 else if (black_king_file & board.wPawns == 0) 10 else 0;
 
     return score;
 }
